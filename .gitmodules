@@ -1,0 +1,3 @@
+[submodule "smpt"]
+	path = smpt
+	url = https://github.com/ScienceMode/ScienceMode4_c_library
