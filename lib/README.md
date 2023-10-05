@@ -1,0 +1,1 @@
+Please copy the libsmpt.lib file from the [ScienceMode4_c_library](https://github.com/ScienceMode/ScienceMode4_c_library build inside this directory.
