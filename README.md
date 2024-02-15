@@ -16,6 +16,13 @@ On Windows, build artifacts from [ScienceMode4_c_library](https://github.com/Sci
 ## How to build for Windows
 Mingw 5.3 from Qt needs to be installed in `C:\Qt\Tools\mingw530_32`. Visual studio compiler needs also be installed.
 
+## Install the wheel pacakge
+```
+pip install wheel
+```
+## Copy Library to lib
+* Download smpt_windows_static_x86.zip from ScienceMode4_c_library](https://github.com/ScienceMode/ScienceMode4_c_library)
+* copy libsmpt.lib from the smpt_windows_static_x86.zip file to /lib
 
 ## Building the wheel
 Create a wheel with
