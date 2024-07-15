@@ -28,9 +28,8 @@ The following should be selected for building the python wheels:
 pip install wheel
 ```
 ## Copy Library to lib
-* Download smpt_windows_static_x86.zip from [ScienceMode4_c_library](https://github.com/ScienceMode/ScienceMode4_c_library)
-* copy libsmpt.lib (from ScienceMode_Library\release\smpt\windows_x86\static) from the smpt_windows_static_x86.zip file to /lib
-* There should now be a file libsmpt.lib in lib
+* Download [smpt_windows_static_x86.zip](https://github.com/ScienceMode/ScienceMode4_c_library/releases/download/v4.0.0/smpt_windows_static_x86.zip) from [ScienceMode4_c_library](https://github.com/ScienceMode/ScienceMode4_c_library)
+* copy libsmpt.lib from the smpt_windows_static_x86.zip  to /lib (path inside the zip file is .\ScienceMode_Library\release\smpt\windows_x86\static)
 
 ## Building the wheel
 Create a wheel with
