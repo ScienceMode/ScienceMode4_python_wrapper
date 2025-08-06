@@ -93,6 +93,7 @@ class BuildLibraryCommand(Command):
         # Build the library using CMake
         cmake_args = [
             "-DCMAKE_INSTALL_PREFIX=" + os.getcwd(),
+            "-DCMAKE_INSTALL_LIBDIR=lib",  # Explicitly set install libdir
             "-DBUILD_SHARED_LIBS=OFF",  # Build static library
             f"-DCMAKE_BUILD_TYPE={self.build_type}",
             "-DCMAKE_CXX_STANDARD=14",
