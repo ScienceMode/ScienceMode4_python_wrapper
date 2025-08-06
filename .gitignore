@@ -127,6 +127,13 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-/lib/*.a
-/lib/*.dll
-/lib/*.lib
+lib/*.a
+lib/*.dll
+lib/*.lib
+lib/cmake/
+build/
+build_temp/
+include/
+sciencemode/*.a
+sciencemode/*.lib
+sciencemode/*.dll

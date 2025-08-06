@@ -51,7 +51,7 @@ ml_update.channel_config[channel].points[1].time = 100
 ml_update.channel_config[channel].points[1].current = 20
 ml_update.channel_config[channel].points[2].time = 100
 ml_update.channel_config[channel].points[2].current = -20
-    
+
 ret = sciencemode.smpt_send_ml_update(device, ml_update)
 print(f"smpt_send_ml_update: {ret}", )
 
