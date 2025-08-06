@@ -7,9 +7,9 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-    - uses: actions/checkout@master
-    - name: submodules recursively
-      run: git submodule update --init --recursive
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: Setup Python
       uses: actions/setup-python@master
       with:
@@ -26,9 +26,9 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-    - uses: actions/checkout@master
-    - name: submodules recursively
-      run: git submodule update --init --recursive
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: Setup Python
       uses: actions/setup-python@master
       with:
@@ -45,9 +45,9 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-    - uses: actions/checkout@master
-    - name: submodules recursively
-      run: git submodule update --init --recursive
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: Setup Python
       uses: actions/setup-python@master
       with:

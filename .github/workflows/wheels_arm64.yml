@@ -4,7 +4,7 @@ env:
   CIBW_BUILD_VERBOSITY: 1
   CIBW_ARCHS: "auto64"
   CIBW_TEST_REQUIRES: pytest
-  CIBW_TEST_COMMAND: "pytest --pyargs scrypt"
+  CIBW_TEST_COMMAND: "pytest"
 jobs:
 
   build_aarch64_wheels:
@@ -19,10 +19,8 @@ jobs:
             platform_id: manylinux_aarch64
     steps:
       - uses: actions/checkout@v4
-
-      - name: submodules recursively
-        run: git submodule update --init --recursive
-  
+        with:
+          submodules: recursive
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
