@@ -8,6 +8,8 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
     - uses: actions/checkout@master
+    - name: submodules recursively
+      run: git submodule update --init --recursive
     - name: Setup Python
       uses: actions/setup-python@master
       with:
@@ -15,6 +17,7 @@ jobs:
     - name: Install packages
       run: |
         pip install pytest
+        python setup.py build_lib
         pip install -e .
         pytest
   windows:
@@ -24,6 +27,8 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
     - uses: actions/checkout@master
+    - name: submodules recursively
+      run: git submodule update --init --recursive
     - name: Setup Python
       uses: actions/setup-python@master
       with:
@@ -31,6 +36,7 @@ jobs:
     - name: Install packages
       run: |
         pip install pytest
+        python setup.py build_lib
         pip install -e .
         pytest
   macos:
@@ -40,6 +46,8 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
     - uses: actions/checkout@master
+    - name: submodules recursively
+      run: git submodule update --init --recursive
     - name: Setup Python
       uses: actions/setup-python@master
       with:
@@ -47,5 +55,6 @@ jobs:
     - name: Install packages
       run: |
         pip install pytest
+        python setup.py build_lib
         pip install -e .
         pytest

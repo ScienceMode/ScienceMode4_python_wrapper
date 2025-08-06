@@ -20,6 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: submodules recursively
+        run: git submodule update --init --recursive
+  
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
