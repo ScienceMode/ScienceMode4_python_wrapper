@@ -3,7 +3,8 @@ on: [push]
 env:
   CIBW_BUILD_VERBOSITY: 1
   CIBW_TEST_REQUIRES: pytest
-  CIBW_TEST_COMMAND: "pytest"
+  CIBW_TEST_COMMAND: "pytest {project}/tests"
+  CIBW_TEST_SOURCES: "tests"
 jobs:
   build_osx_wheels:
     name: Build wheels on macos-latest

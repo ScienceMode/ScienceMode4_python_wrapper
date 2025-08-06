@@ -5,7 +5,8 @@ env:
   CIBW_ARCHS: "auto64"
   # Run the package tests using `pytest`
   CIBW_TEST_REQUIRES: pytest
-  CIBW_TEST_COMMAND: "pytest"
+  CIBW_TEST_COMMAND: "pytest {project}/tests"
+  CIBW_TEST_SOURCES: "tests"
 jobs:
 
   build_wheels_for_win:
