@@ -2,3 +2,4 @@ include lib/*.a
 include lib/*.lib
 include sciencemode/*.a
 include sciencemode/*.lib
+include include/*

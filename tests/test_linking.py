@@ -24,13 +24,35 @@ def test_ffi_interface():
 
     assert hasattr(sm, "ffi"), "FFI interface is available"
 
+    # Check if the enhanced CFFI utilities are available
+    if hasattr(sm, "_have_cffi_utils"):
+        print(f"Enhanced CFFI utilities available: {sm._have_cffi_utils}")
+        if sm._have_cffi_utils:
+            # Check for some key enhanced features
+            assert hasattr(sm, "managed_new"), "managed_new function is available"
+            assert hasattr(sm, "managed_buffer"), "managed_buffer function is available"
+            assert hasattr(sm, "CFFIResourceManager"), (
+                "CFFIResourceManager class is available"
+            )
+
 
 def test_create_device_struct():
     """Test creating a device struct."""
     from sciencemode import sciencemode as sm
 
-    device = sm.ffi.new("Smpt_device*")
-    assert device is not None, "Device struct created successfully"
+    # Check if enhanced CFFI utilities are available
+    if (
+        hasattr(sm, "_have_cffi_utils")
+        and sm._have_cffi_utils
+        and hasattr(sm, "managed_new")
+    ):
+        # Use managed_new for better resource management
+        device = sm.managed_new("Smpt_device*")
+        assert device is not None, "Device struct created successfully with managed_new"
+    else:
+        # Fall back to standard ffi.new
+        device = sm.ffi.new("Smpt_device*")
+        assert device is not None, "Device struct created successfully with ffi.new"
 
 
 def test_library_files_exist():

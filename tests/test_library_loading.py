@@ -25,6 +25,33 @@ def test_sciencemode_has_ffi_and_lib():
     if hasattr(sciencemode, "lib"):
         assert True, "sciencemode.lib exists"
 
+    # Check for enhanced CFFI utilities
+    if hasattr(sciencemode, "_have_cffi_utils"):
+        print(f"Enhanced CFFI utilities available: {sciencemode._have_cffi_utils}")
+        if sciencemode._have_cffi_utils:
+            # Test some key enhanced utilities
+            assert hasattr(sciencemode, "managed_new"), (
+                "managed_new function is available"
+            )
+            assert hasattr(sciencemode, "managed_buffer"), (
+                "managed_buffer function is available"
+            )
+            assert hasattr(sciencemode, "CFFIResourceManager"), (
+                "CFFIResourceManager class is available"
+            )
+
+            # Test string conversion utilities
+            assert hasattr(sciencemode, "to_bytes"), "to_bytes function is available"
+            assert hasattr(sciencemode, "from_cstring"), (
+                "from_cstring function is available"
+            )
+            assert hasattr(sciencemode, "to_c_array"), (
+                "to_c_array function is available"
+            )
+            assert hasattr(sciencemode, "from_c_array"), (
+                "from_c_array function is available"
+            )
+
 
 @pytest.mark.parametrize(
     "function_name",
@@ -68,20 +95,99 @@ def test_create_device_struct():
     """Test that we can create a device struct with FFI."""
     from sciencemode import sciencemode
 
-    # Create a device struct - this tests FFI but doesn't require hardware
-    device = sciencemode.ffi.new("Smpt_device*")
+    # Check if enhanced CFFI utilities are available
+    if (
+        hasattr(sciencemode, "_have_cffi_utils")
+        and sciencemode._have_cffi_utils
+        and hasattr(sciencemode, "managed_new")
+    ):
+        # Create a device struct using enhanced resource management
+        device = sciencemode.managed_new("Smpt_device*")
+        print("Created device struct using managed_new")
+    else:
+        # Create a device struct using standard FFI - this tests FFI but doesn't require hardware
+        device = sciencemode.ffi.new("Smpt_device*")
+        print("Created device struct using ffi.new")
+
     assert device is not None, "Device struct created successfully"
+
+
+def test_cffi_context_manager():
+    """Test CFFI context manager if available."""
+    from sciencemode import sciencemode
+
+    # Skip if enhanced CFFI utilities are not available
+    if (
+        not hasattr(sciencemode, "_have_cffi_utils")
+        or not sciencemode._have_cffi_utils
+        or not hasattr(sciencemode, "CFFIResourceManager")
+    ):
+        pytest.skip("CFFI resource manager not available")
+
+    # Test the context manager with a device struct
+    with sciencemode.CFFIResourceManager(sciencemode.ffi.new("Smpt_device*")) as device:
+        assert device is not None, (
+            "Device struct created successfully with context manager"
+        )
+        # Test that the device has the expected fields
+        assert hasattr(device, "serial_port_name"), (
+            "Device struct in context manager has serial_port_name field"
+        )
+        print("Successfully used context manager for device struct")
+
+
+def test_string_conversion():
+    """Test string conversion utilities if available."""
+    from sciencemode import sciencemode
+
+    # Skip if enhanced CFFI utilities are not available
+    if not hasattr(sciencemode, "_have_cffi_utils") or not sciencemode._have_cffi_utils:
+        pytest.skip("CFFI string conversion utilities not available")
+
+    if hasattr(sciencemode, "to_bytes"):
+        # Test to_bytes with a string
+        bytes_data = sciencemode.to_bytes("test string")
+        assert isinstance(bytes_data, bytes), "to_bytes converts string to bytes"
+        assert bytes_data == b"test string", "to_bytes preserves content"
+
+        # Test to_bytes with bytes
+        bytes_input = b"already bytes"
+        bytes_output = sciencemode.to_bytes(bytes_input)
+        assert bytes_output is bytes_input or bytes_output == bytes_input, (
+            "to_bytes preserves bytes input"
+        )
+
+    if hasattr(sciencemode, "from_cstring"):
+        # Test from_cstring with NULL
+        null_string = sciencemode.from_cstring(sciencemode.ffi.NULL)
+        assert null_string is None, "from_cstring returns None for NULL pointers"
+
+        # Test from_cstring with a C string
+        c_string = sciencemode.ffi.new("char[]", b"hello world")
+        py_string = sciencemode.from_cstring(c_string)
+        assert isinstance(py_string, str), "from_cstring returns a Python string"
+        assert py_string == "hello world", "from_cstring preserves content"
+
+    if hasattr(sciencemode, "to_c_array") and hasattr(sciencemode, "from_c_array"):
+        # Test to_c_array and from_c_array with integers
+        py_list = [1, 2, 3, 4, 5]
+        c_array = sciencemode.to_c_array("int[]", py_list)
+        assert c_array != sciencemode.ffi.NULL, "to_c_array creates a valid array"
+
+        # Convert back to Python list
+        round_trip = sciencemode.from_c_array(c_array, len(py_list))
+        assert round_trip == py_list, "from_c_array preserves content"
 
     # Test a few basic fields
     if platform.system() == "Windows":
-        assert hasattr(
-            device, "serial_port_handle_"
-        ), "Device struct has serial_port_handle_ field on Windows"
+        assert hasattr(device, "serial_port_handle_"), (
+            "Device struct has serial_port_handle_ field on Windows"
+        )
     else:
-        assert hasattr(
-            device, "serial_port_descriptor"
-        ), "Device struct has serial_port_descriptor field on Linux/macOS"
+        assert hasattr(device, "serial_port_descriptor"), (
+            "Device struct has serial_port_descriptor field on Linux/macOS"
+        )
 
-    assert hasattr(
-        device, "serial_port_name"
-    ), "Device struct has serial_port_name field"
+    assert hasattr(device, "serial_port_name"), (
+        "Device struct has serial_port_name field"
+    )

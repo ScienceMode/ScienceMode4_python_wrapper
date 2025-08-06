@@ -1,3 +1,19 @@
+"""
+CFFI wrapper for ScienceMode library.
+
+This module uses CFFI to provide Python bindings for the ScienceMode library.
+It handles the compilation, linking, and loading of the C library, and provides
+utility functions for working with the CFFI interface.
+
+The module offers:
+- Automatic header file and library detection
+- Platform-specific handling for Windows, macOS, and Linux
+- Resource management through context managers
+- Memory management helpers
+- Error handling utilities
+- String conversion functions
+"""
+
 import glob
 import itertools
 import os
@@ -10,20 +26,26 @@ from cffi import FFI
 from pycparser import c_ast
 from pycparser.c_generator import CGenerator
 
+# Regular expressions for parsing include paths and #define statements
 INCLUDE_PATTERN = re.compile(r"(-I)?(.*ScienceMode)")
 DEFINE_PATTERN = re.compile(r"^#define\s+(\w+)\s+\(?([\w<|.]+)\)?", re.M)
+
+# List of symbols that should not be processed as #define statements
 DEFINE_BLACKLIST = {
     "main",
 }
 
 # Try to find the include directory in different locations
+# We check multiple possible locations to support different installation structures
 devel_root_candidates = [
-    os.path.abspath("./smpt/ScienceMode_Library/include"),
-    os.path.abspath("./smpt/ScienceMode_Library"),
-    os.path.abspath("../smpt/ScienceMode_Library/include"),
-    os.path.abspath("../smpt/ScienceMode_Library"),
-    os.path.abspath("../include/ScienceMode4"),
-    os.path.abspath("./include/ScienceMode4"),
+    os.path.abspath(
+        "./smpt/ScienceMode_Library/include"
+    ),  # Standard source tree layout
+    os.path.abspath("./smpt/ScienceMode_Library"),  # Alternative source layout
+    os.path.abspath("../smpt/ScienceMode_Library/include"),  # When in a subdirectory
+    os.path.abspath("../smpt/ScienceMode_Library"),  # When in a subdirectory
+    os.path.abspath("../include/ScienceMode4"),  # Installed version layout
+    os.path.abspath("./include/ScienceMode4"),  # Installed version layout
 ]
 
 # Find the first valid include directory
@@ -93,6 +115,11 @@ else:
     smpt_include_path4 = include_dir
 
 # define GCC specific compiler extensions away
+# Define preprocessor arguments for pycparser
+# These definitions help parse the header files correctly by:
+# 1. Setting the appropriate platform macros based on the current system
+# 2. Defining away GCC-specific extensions that pycparser can't handle
+# 3. Setting up include paths for both real headers and fake headers (for standard includes)
 DEFINE_ARGS = [
     # Platform definitions - set according to current platform
     # but make sure to handle platform-specific fields in structures
@@ -134,7 +161,8 @@ DEFINE_ARGS = [
     "-I" + smpt_include_path4,
 ]
 
-FUNCTION_BLACKLIST = {}
+# List of function names that should be excluded from processing
+FUNCTION_BLACKLIST = {}  # Empty for now, but can be populated if needed
 
 VARIADIC_ARG_PATTERN = re.compile(r"va_list \w+")
 ARRAY_SIZEOF_PATTERN = re.compile(r"\[[^\]]*sizeof[^\]]*]")
@@ -205,10 +233,18 @@ else:
 
 
 class Collector(c_ast.NodeVisitor):
+    """AST visitor that collects type declarations and function definitions.
+
+    This class walks through the Abstract Syntax Tree (AST) of C code and
+    extracts all type declarations (structs, enums, typedefs) and function
+    declarations for use with CFFI.
+    """
+
     def __init__(self):
-        self.generator = CGenerator()
-        self.typedecls = []
-        self.functions = []
+        """Initialize the collector with empty lists for types and functions."""
+        self.generator = CGenerator()  # For generating C code from AST nodes
+        self.typedecls = []  # Will hold all type declarations
+        self.functions = []  # Will hold all function declarations
 
     def process_typedecl(self, node):
         coord = os.path.abspath(node.coord.file)
@@ -261,6 +297,123 @@ class Collector(c_ast.NodeVisitor):
 
 
 ffi = FFI()
+
+
+# Function to initialize the library once
+def _init_smpt_lib():
+    """Initialize the ScienceMode library once during the program's lifetime."""
+    print("Initializing ScienceMode library...")
+    # Any one-time initialization could go here
+    return {
+        "include_dir": include_dir,
+        "lib_path": smpt_lib_path,
+        "platform": platform.system(),
+    }
+
+
+# Function to load library directly (useful for testing and debug)
+def load_library():
+    """Try to load the SMPT library directly using ffi.dlopen().
+
+    This is useful for direct testing without building the extension module.
+    Returns the loaded library or None if not found.
+    """
+    # Choose library pattern based on platform
+    if platform.system() == "Windows":
+        patterns = ["smpt.dll", "libsmpt.dll"]
+    elif platform.system() == "Darwin":
+        patterns = ["libsmpt.dylib"]
+    else:
+        patterns = ["libsmpt.so"]
+
+    # Try to load the library from the lib path
+    for pattern in patterns:
+        try:
+            lib_path = os.path.join(smpt_lib_path, pattern)
+            if os.path.exists(lib_path):
+                print(f"Loading library from: {lib_path}")
+                return ffi.dlopen(lib_path)
+        except Exception as e:
+            print(f"Failed to load {pattern}: {e}")
+            if platform.system() == "Windows":
+                try:
+                    # Use ctypes for Windows error handling
+                    import ctypes
+
+                    # Check if we're on Windows to safely use windll
+                    if sys.platform.startswith("win"):
+                        try:
+                            # First make sure windll is available
+                            if hasattr(ctypes, "windll"):
+                                # Get kernel32 if available
+                                if hasattr(ctypes.windll, "kernel32"):
+                                    # Get the last error code if GetLastError is available
+                                    if hasattr(ctypes.windll.kernel32, "GetLastError"):
+                                        error_code = (
+                                            ctypes.windll.kernel32.GetLastError()
+                                        )
+                                        print(f"Windows error code: {error_code}")
+
+                                        # Try to get a formatted message if possible
+                                        try:
+                                            # Format message flags and parameters
+                                            FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
+                                            FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
+
+                                            # Buffer for the error message
+                                            buffer_size = 256
+                                            buffer = ctypes.create_string_buffer(
+                                                buffer_size
+                                            )
+
+                                            # Get the error message
+                                            ctypes.windll.kernel32.FormatMessageA(
+                                                FORMAT_MESSAGE_FROM_SYSTEM
+                                                | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                                None,
+                                                error_code,
+                                                0,
+                                                buffer,
+                                                buffer_size,
+                                                None,
+                                            )
+
+                                            # Convert the message to a Python string
+                                            message = buffer.value.decode(
+                                                "utf-8", errors="replace"
+                                            ).strip()
+                                            print(f"Windows error message: {message}")
+                                        except Exception as msg_err:
+                                            print(
+                                                f"Error getting formatted error message: {msg_err}"
+                                            )
+                                    else:
+                                        print(
+                                            "GetLastError function not available in kernel32"
+                                        )
+                                else:
+                                    print("kernel32 not available in windll")
+                            else:
+                                print("windll not available in ctypes")
+                        except AttributeError:
+                            print(
+                                "Could not access Windows-specific ctypes functionality"
+                            )
+                    else:
+                        print("Not on Windows, skipping windll usage")
+                except Exception as win_err:
+                    print(f"Error getting Windows error details: {win_err}")
+            else:
+                try:
+                    if hasattr(ffi, "errno"):
+                        print(f"Error code: {ffi.errno}")
+                    else:
+                        print("Error occurred but errno not available")
+                except Exception as err_ex:
+                    print(f"Error getting error code: {err_ex}")
+
+    print("Could not load library directly")
+    return None
 
 
 ffi.set_source(
@@ -342,6 +495,171 @@ elif "serial_port_descriptor" in cdef and sys.platform.startswith("win"):
 
 ffi.cdef(cdef)
 
+
+# Create a context manager class for managing CFFI resources
+class CFFIResourceManager:
+    """Context manager for CFFI resources to ensure proper cleanup."""
+
+    def __init__(self, resource, destructor=None):
+        """Initialize with a CFFI resource and optional destructor function.
+
+        Args:
+            resource: CFFI resource to manage
+            destructor: Optional function to call for cleanup
+        """
+        self.resource = resource
+        self.destructor = destructor
+
+    def __enter__(self):
+        """Return the resource when entering the context."""
+        return self.resource
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Release the resource when exiting the context."""
+        if self.destructor and self.resource:
+            try:
+                self.destructor(self.resource)
+            except Exception as e:
+                print(f"Error during resource cleanup: {e}")
+        elif hasattr(ffi, "release") and self.resource:
+            try:
+                ffi.release(self.resource)
+            except Exception as e:
+                print(f"Error releasing resource: {e}")
+        self.resource = None
+        return False  # Don't suppress exceptions
+
+
+# Memory management helpers
+def managed_new(ctype, init=None, destructor=None, size=0):
+    """Create a new CFFI object with automatic memory management.
+
+    Args:
+        ctype: C type to allocate
+        init: Initial value
+        destructor: Custom destructor function (optional)
+        size: Size hint for garbage collector (optional)
+
+    Returns:
+        CFFI object with garbage collection
+    """
+    if init is not None:
+        obj = ffi.new(ctype, init)
+    else:
+        obj = ffi.new(ctype)
+
+    if destructor:
+        return ffi.gc(obj, destructor, size)
+    return obj
+
+
+def managed_buffer(cdata, size=None):
+    """Create a managed buffer from CFFI data.
+
+    Args:
+        cdata: CFFI data to create buffer from
+        size: Size of the buffer in bytes (optional)
+
+    Returns:
+        A context manager that yields a buffer object
+    """
+    buf = ffi.buffer(cdata, size)
+    return CFFIResourceManager(buf)
+
+
+# Function to get the library configuration, initialized only once
+def get_smpt_config():
+    """Get the SMPT library configuration, initializing it only once.
+
+    Returns:
+        dict: Configuration dictionary with paths and platform info
+    """
+    return ffi.init_once(_init_smpt_lib, "smpt_init")
+
+
+# String conversion utilities
+def to_bytes(value):
+    """Convert a Python string or bytes to bytes object.
+
+    Args:
+        value: String or bytes to convert
+
+    Returns:
+        bytes: Python bytes object
+    """
+    if isinstance(value, str):
+        return value.encode("utf-8")
+    elif isinstance(value, bytes):
+        return value
+    else:
+        return str(value).encode("utf-8")
+
+
+def from_cstring(cdata):
+    """Convert a C string to a Python string.
+
+    Args:
+        cdata: CFFI char* data
+
+    Returns:
+        str: Python string
+    """
+    if cdata == ffi.NULL:
+        return None
+
+    # Get the C string as bytes first
+    byte_str = ffi.string(cdata)
+
+    # Convert to Python string
+    if isinstance(byte_str, bytes):
+        return byte_str.decode("utf-8", errors="replace")
+    return byte_str  # Already a string in Python 3
+
+
+def to_c_array(data_type, py_list):
+    """Convert a Python list to a C array of the specified type.
+
+    Args:
+        data_type: C data type (e.g., "int[]")
+        py_list: Python list to convert
+
+    Returns:
+        CFFI array object
+    """
+    if not py_list:
+        return ffi.NULL
+
+    arr = ffi.new(data_type, len(py_list))
+    for i, value in enumerate(py_list):
+        arr[i] = value
+
+    return arr
+
+
+def from_c_array(cdata, length, item_type=None):
+    """Convert a C array to a Python list.
+
+    Args:
+        cdata: CFFI array data
+        length: Length of the array
+        item_type: Optional type conversion function
+
+    Returns:
+        list: Python list with array contents
+    """
+    if cdata == ffi.NULL or length <= 0:
+        return []
+
+    result = [cdata[i] for i in range(length)]
+
+    if item_type:
+        result = [item_type(item) for item in result]
+
+    return result
+
+
+# Debugging feature: Write the generated C definitions to a file
+# This can be enabled for troubleshooting CFFI binding issues
 if False:
     file = open("sciencemode.cdef", "w")
     file.write(cdef)

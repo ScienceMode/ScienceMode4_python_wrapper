@@ -63,7 +63,14 @@ def test_enum_values_exist(sm, enum_val):
 def test_ffi_structs(sm, struct_name):
     """Test creation of various structs using FFI."""
     try:
-        obj = sm.ffi.new(struct_name)
+        # Check if we have the enhanced CFFI utilities
+        if hasattr(sm, "_have_cffi_utils") and sm._have_cffi_utils:
+            # Use managed_new for safer resource management
+            obj = sm.managed_new(struct_name)
+        else:
+            # Fall back to regular ffi.new
+            obj = sm.ffi.new(struct_name)
+
         assert obj is not None, f"Created struct {struct_name}"
     except Exception as e:
         pytest.skip(f"Could not create struct {struct_name}: {e}")
@@ -75,25 +82,59 @@ def test_packet_number_generator(sm):
     if not hasattr(sm, "smpt_packet_number_generator_next"):
         pytest.skip("smpt_packet_number_generator_next function not found")
 
-    # Create a device struct
-    device = sm.ffi.new("Smpt_device*")
+    # Create a device struct with proper resource management
+    if (
+        hasattr(sm, "_have_cffi_utils")
+        and sm._have_cffi_utils
+        and hasattr(sm, "CFFIResourceManager")
+    ):
+        # Use the enhanced resource manager
+        with sm.CFFIResourceManager(sm.ffi.new("Smpt_device*")) as device:
+            # Initialize the packet number field - it could be an int8 or uint8
+            device.current_packet_number = 0
 
-    # Initialize the packet number field - it could be an int8 or uint8
-    device.current_packet_number = 0
+            # The function updates the device and returns the previous value
+            # First call, expect return value of 0
+            packet_number = sm.smpt_packet_number_generator_next(device)
+            assert packet_number == 0, "First call should return initial value (0)"
 
-    # The function updates the device and returns the previous value
-    # First call, expect return value of 0
-    packet_number = sm.smpt_packet_number_generator_next(device)
-    assert packet_number == 0, "First call should return initial value (0)"
+            # Save current value
+            prev_value = device.current_packet_number
 
-    # Save current value
-    prev_value = device.current_packet_number
+            # Second call
+            packet_number = sm.smpt_packet_number_generator_next(device)
 
-    # Second call
-    packet_number = sm.smpt_packet_number_generator_next(device)
+            # Verify the packet number was changed
+            assert packet_number == prev_value, (
+                f"Should return previous value ({prev_value})"
+            )
+            assert device.current_packet_number != prev_value, (
+                "Should update the packet number"
+            )
+    else:
+        # Fall back to original implementation without resource management
+        device = sm.ffi.new("Smpt_device*")
 
-    # Verify the packet number was changed
-    assert packet_number == prev_value, f"Should return previous value ({prev_value})"
-    assert device.current_packet_number != prev_value, "Should update the packet number"
+        # Initialize the packet number field - it could be an int8 or uint8
+        device.current_packet_number = 0
+
+        # The function updates the device and returns the previous value
+        # First call, expect return value of 0
+        packet_number = sm.smpt_packet_number_generator_next(device)
+        assert packet_number == 0, "First call should return initial value (0)"
+
+        # Save current value
+        prev_value = device.current_packet_number
+
+        # Second call
+        packet_number = sm.smpt_packet_number_generator_next(device)
+
+        # Verify the packet number was changed
+        assert packet_number == prev_value, (
+            f"Should return previous value ({prev_value})"
+        )
+        assert device.current_packet_number != prev_value, (
+            "Should update the packet number"
+        )
 
     # Skip the max value test since we don't know if it's int8 or uint8
