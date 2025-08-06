@@ -131,10 +131,10 @@ class BuildLibraryCommand(Command):
             print("*" * 80)
             raise RuntimeError("CMake configuration failed!") from e
 
-        build_args = ["--"]
+        build_args = ["--config", self.build_type]
 
         try:
-            print("Building SMPT library with CMake")
+            print(f"Building SMPT library with CMake (config: {self.build_type})")
             subprocess.run(
                 ["cmake", "--build", "."] + build_args, cwd=build_temp, check=True
             )
