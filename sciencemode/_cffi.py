@@ -18,7 +18,9 @@ DEFINE_BLACKLIST = {
 
 # Try to find the include directory in different locations
 devel_root_candidates = [
+    os.path.abspath("./smpt/ScienceMode_Library/include"),
     os.path.abspath("./smpt/ScienceMode_Library"),
+    os.path.abspath("../smpt/ScienceMode_Library/include"),
     os.path.abspath("../smpt/ScienceMode_Library"),
     os.path.abspath("../include/ScienceMode4"),
     os.path.abspath("./include/ScienceMode4"),
@@ -275,10 +277,8 @@ ffi.set_source(
     library_dirs=[smpt_lib_path],  # Using the absolute path variable
     # Use static linking for all platforms
     extra_compile_args=["-DSMPT_STATIC"],
-    # Force static linking with appropriate flags for each platform
-    extra_link_args=[
-        "-static" if platform.system() != "Windows" else "/WHOLEARCHIVE:smpt"
-    ],
+    # Modify linking flags to avoid static linking issues
+    extra_link_args=[] if platform.system() != "Windows" else ["/WHOLEARCHIVE:smpt"],
     # Use py_limited_api to avoid symbol name issues when using static linking
     py_limited_api=False,
 )
