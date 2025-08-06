@@ -83,7 +83,7 @@ The package includes pytest tests to verify library loading and linking without 
 python tests/run_unittest.py
 
 # Run all tests with pytest
-PYTHONPATH=. pytest tests -v 
+PYTHONPATH=. pytest tests -v
 ```
 
 This script performs the essential tests to verify:
