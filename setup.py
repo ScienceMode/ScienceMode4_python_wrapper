@@ -131,11 +131,7 @@ class BuildLibraryCommand(Command):
             print("*" * 80)
             raise RuntimeError("CMake configuration failed!") from e
 
-        # Determine number of CPU cores for parallel builds
-        cpu_count = max(
-            1, multiprocessing.cpu_count() // 2
-        )  # Use half the available cores
-        build_args = ["--", f"-j{cpu_count}"]
+        build_args = ["--"]
 
         try:
             print("Building SMPT library with CMake")
