@@ -218,7 +218,7 @@ def create_buffer(cdata, size=None):
     return managed_buffer(cdata, size)
 
 
-def find_library():
+def find_library():  # noqa: C901
     """Find and load the SMPT library (static or shared)
 
     Uses both ctypes and CFFI approaches for maximum compatibility.
@@ -307,7 +307,8 @@ def find_library():
                                 if hasattr(ffi, "errno"):
                                     errno_val = ffi.errno
                                     print(
-                                        f"CFFI error: {name} from {path}, errno: {errno_val}"
+                                        f"CFFI error: {name} from {path}, "
+                                        f"errno: {errno_val}"
                                     )
                                 else:
                                     print(f"CFFI error loading {name} from {path}: {e}")

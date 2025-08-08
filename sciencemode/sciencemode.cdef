@@ -11,7 +11,7 @@
 #define SMPT_DL_MAX_FILE_NAME_LENGTH ...
 #define SMPT_DL_GUID_STRING_LENGTH 36
 #define SMPT_DL_MAX_BLOCK_BYTES_LENGTH 512
-typedef enum 
+typedef enum
 {
   Smpt_Cmd_Ll_Init = ...,
   Smpt_Cmd_Ll_Init_Ack = ...,
@@ -86,7 +86,7 @@ typedef enum
   Smpt_Cmd_Sl_Set_Device_Id_Ack = ...,
   Smpt_Cmd_Last_Item = ...
 } Smpt_Cmd;
-typedef enum 
+typedef enum
 {
   Smpt_Cmd_Numbers_Low_Level_Min = ...,
   Smpt_Cmd_Numbers_Low_Level_Max = ...,
@@ -101,7 +101,7 @@ typedef enum
   Smpt_Cmd_Numbers_Boot_Level_Min = ...,
   Smpt_Cmd_Numbers_Boot_Level_Max = ...
 } Smpt_Cmd_Numbers_Min_Max;
-typedef enum 
+typedef enum
 {
   Smpt_Result_Successful = ...,
   Smpt_Result_Transfer_Error = ...,
@@ -134,7 +134,7 @@ typedef enum
   Smpt_Result_Pulse_Low_Current_Error = ...,
   Smpt_Result_Last_Item = ...
 } Smpt_Result;
-typedef enum 
+typedef enum
 {
   Smpt_Length_Number_Of_Channels = ...,
   Smpt_Length_Number_Of_Acks = ...,
@@ -151,18 +151,18 @@ typedef enum
   Smpt_Length_Packet_Output_Buffer = ...,
   Smpt_Length_File_Name = ...
 } Smpt_Length;
-typedef enum 
+typedef enum
 {
   Smpt_Packet_Number_Modulo = ...
 } Smpt_Constants_Diverse;
-typedef enum 
+typedef enum
 {
   Smpt_Limit_Header_Size = ...,
   Smpt_Limit_Max_Packet_Size = ...,
   Smpt_Limit_Max_Packet_Size_No_Emg = ...,
   Smpt_Limit_Min_Packet_Size = ...
 } Smpt_Limit;
-typedef enum 
+typedef enum
 {
   Smpt_Channel_Red = ...,
   Smpt_Channel_Blue = ...,
@@ -170,13 +170,13 @@ typedef enum
   Smpt_Channel_White = ...,
   Smpt_Channel_Undefined = ...
 } Smpt_Channel;
-typedef enum 
+typedef enum
 {
   Smpt_Connector_Yellow = ...,
   Smpt_Connector_Green = ...,
   Smpt_Connector_Undefined = ...
 } Smpt_Connector;
-typedef enum 
+typedef enum
 {
   Smpt_High_Voltage_Default = ...,
   Smpt_High_Voltage_Off = ...,
@@ -187,7 +187,7 @@ typedef enum
   Smpt_High_Voltage_150V = ...,
   Smpt_High_Voltage_Last_Item = ...
 } Smpt_High_Voltage;
-typedef enum 
+typedef enum
 {
   Smpt_Measurement_None = ...,
   Smpt_Measurement_Stim_Current = ...,
@@ -195,14 +195,14 @@ typedef enum
   Smpt_Measurement_High_Voltage = ...,
   Smpt_Measurement_Last_Item = ...
 } Smpt_Measurement;
-typedef enum 
+typedef enum
 {
   Smpt_Main_Status_Uninitialized = ...,
   Smpt_Main_Status_Dm_Initialized = ...,
   Smpt_Main_Status_Dm_Running = ...,
   Smpt_Main_Status_Last_Item = ...
 } Smpt_Main_Status;
-typedef enum 
+typedef enum
 {
   Smpt_Stim_Status_Uninitialized = ...,
   Smpt_Stim_Status_Ll_Initialized = ...,
@@ -210,24 +210,24 @@ typedef enum
   Smpt_Stim_Status_Ml_Running = ...,
   Smpt_Stim_Status_Last_Item = ...
 } Smpt_Stim_Status;
-typedef struct 
+typedef struct
 {
   uint16_t time;
   float current;
   uint8_t interpolation_mode;
 } Smpt_point;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   uint16_t command_number;
   Smpt_Result result;
 } Smpt_ack;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   uint16_t command_number;
 } Smpt_cmd;
-typedef struct 
+typedef struct
 {
   uint32_t acks_length;
   uint32_t acks_current_index;
@@ -238,7 +238,7 @@ typedef struct
   Smpt_cmd requests[100];
   uint32_t new_ack_available;
 } Smpt_cmd_list;
-typedef struct 
+typedef struct
 {
   uint8_t *buffer;
   uint8_t *buffer_state;
@@ -249,7 +249,7 @@ typedef struct
   uint32_t number_of_rows;
   uint32_t row_length;
 } Packet_input_buffer;
-typedef struct 
+typedef struct
 {
   uint32_t packet_length;
   uint8_t packet[1200];
@@ -261,24 +261,24 @@ typedef struct
   uint8_t packet_input_buffer_data[120000];
   uint8_t packet_input_buffer_state[100];
 } Smpt_device;
-typedef struct 
+typedef struct
 {
   uint8_t major;
   uint8_t minor;
   uint8_t revision;
 } Smpt_version;
-typedef struct 
+typedef struct
 {
   Smpt_version fw_version;
   Smpt_version smpt_version;
 } Smpt_uc_version;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   Smpt_uc_version uc_version;
 } Smpt_get_version_ack;
-typedef enum 
+typedef enum
 {
   Smpt_Fw_Hash_Type_Uninitialized = ...,
   Smpt_Fw_Hash_Type_Git = ...,
@@ -286,13 +286,13 @@ typedef enum
   Smpt_Fw_Hash_Type_Elf_Sha256 = ...,
   Smpt_Fw_Hash_Type_Last_Item = ...
 } Smpt_Fw_Hash_Type;
-typedef enum 
+typedef enum
 {
   Smpt_Fw_Hash_State_Not_Valid = ...,
   Smpt_Fw_Hash_State_Valid = ...,
   Smpt_Fw_Hash_State_Last_Item = ...
 } Smpt_Fw_Hash_State_Type;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
@@ -301,39 +301,39 @@ typedef struct
   Smpt_Fw_Hash_Type fw_hash_type;
   Smpt_Fw_Hash_State_Type fw_hash_state;
 } Smpt_get_extended_version_ack;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   char device_id[10];
 } Smpt_get_device_id_ack;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   uint8_t battery_level;
   uint16_t battery_voltage;
 } Smpt_get_battery_status_ack;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   Smpt_Stim_Status stim_status;
   Smpt_High_Voltage high_voltage_level;
 } Smpt_get_stim_status_ack;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   Smpt_Main_Status main_status;
 } Smpt_get_main_status_ack;
-typedef enum 
+typedef enum
 {
   Smpt_Library_Version_Major = ...,
   Smpt_Library_Version_Minor = ...,
   Smpt_Library_Version_Revision = ...
 } Smpt_General;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Signal_Type_Unused = ...,
   Smpt_Dl_Signal_Type_Unkown = ...,
@@ -350,7 +350,7 @@ typedef enum
   Smpt_Dl_Signal_Type_Breathing = ...,
   Smpt_Dl_Signal_Type_Last_Item = ...
 } Smpt_Dl_Signal_Type;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Dsp_Filter_off = ...,
   Smpt_Dl_Dsp_Filter_001 = ...,
@@ -358,7 +358,7 @@ typedef enum
   Smpt_Dl_Dsp_Filter_003 = ...,
   Smpt_Dl_Dsp_Filter_Last = ...
 } Smpt_Dl_Dsp_Filter;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Output_Sample_Freq_Invalid = ...,
   Smpt_Dl_Output_Sample_Freq_32kSPS = ...,
@@ -371,14 +371,14 @@ typedef enum
   Smpt_Dl_Output_Sample_Freq_250SPS = ...,
   Smpt_Dl_Output_Sample_Freq_Lowpower_Last_Item = ...
 } Smpt_Dl_Output_Sample_Freq;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Electrode_Status_Positive = ...,
   Smpt_Dl_Electrode_Status_Negative = ...,
   Smpt_Dl_Electrode_Status_Maximum_Valid = ...,
   Smpt_Dl_Electrode_Status_Last_Item = ...
 } Smpt_Dl_Electrode_Status;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Get_Type_Battery_Status = ...,
   Smpt_Dl_Get_Type_File_System_Status = ...,
@@ -390,7 +390,7 @@ typedef enum
   Smpt_Dl_Get_Type_File_Info = ...,
   Smpt_Dl_Get_Type_Last_Item = ...
 } Smpt_Dl_Get_Type;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Op_Mode_Undefined = ...,
   Smpt_Dl_Op_Mode_Idle = ...,
@@ -402,13 +402,13 @@ typedef enum
   Smpt_Dl_Op_Mode_Data_Transfer = ...,
   Smpt_Dl_Op_Mode_Last_Item = ...
 } Smpt_Dl_Op_Mode;
-typedef struct 
+typedef struct
 {
   char file_name[128 + 1];
   uint32_t file_size;
   uint16_t file_checksum;
 } Smpt_dl_file_info;
-typedef struct 
+typedef struct
 {
   uint8_t tm_sec;
   uint8_t tm_min;
@@ -420,7 +420,7 @@ typedef struct
   uint16_t tm_yday;
   uint8_t tm_isdst;
 } Smpt_dl_tm;
-typedef struct 
+typedef struct
 {
   uint8_t id;
   uint8_t config1;
@@ -449,7 +449,7 @@ typedef struct
   uint8_t wct1;
   uint8_t wct2;
 } Smpt_dl_ads129x;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Init_Sync_Signal_Undifined = ...,
   Smpt_Dl_Init_Sync_Signal_Rect_Pulse_0_5V = ...,
@@ -457,7 +457,7 @@ typedef enum
   Smpt_Dl_Init_Sync_Signal_Sinus_0_200mV = ...,
   Smpt_Dl_Init_Sync_Signal_Last_Item = ...
 } Smpt_Dl_Init_Sync_Signal;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Init_Ack_State_Undefined = ...,
   Smpt_Dl_Init_Ack_State_Successfull = ...,
@@ -468,7 +468,7 @@ typedef enum
   Smpt_Dl_Init_Ack_State_Error_Ads129x_Register = ...,
   Smpt_Dl_Init_Ack_State_Last = ...
 } Smpt_Dl_Init_Ack_State;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_dl_ads129x ads129x;
@@ -488,7 +488,7 @@ typedef struct
   Smpt_Dl_Init_Sync_Signal sync_signal;
   Smpt_Dl_Dsp_Filter filter;
 } Smpt_dl_init;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
@@ -497,13 +497,13 @@ typedef struct
   Smpt_Dl_Init_Ack_State init_state;
   Smpt_Dl_Output_Sample_Freq freq_out;
 } Smpt_dl_init_ack;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Send_File_By_Name_Mode_Undefined = ...,
   Smpt_Dl_Send_File_By_Name_Mode_Multiblock = ...,
   Smpt_Dl_Send_File_By_Name_Mode_Singleblock = ...
 } Smpt_Dl_Send_File_By_Name_Mode;
-typedef struct 
+typedef struct
 {
   uint64_t file_size;
   uint32_t n_blocks;
@@ -511,16 +511,16 @@ typedef struct
   uint32_t block_offset;
   Smpt_Dl_Send_File_By_Name_Mode mode;
 } Smpt_dl_file_by_name;
-typedef struct 
+typedef struct
 {
   uint16_t n_measurements;
 } Smpt_dl_get_mmi;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_EnergyState_CableConnected = ...,
   Smpt_Dl_EnergyState_DeviceIsLoading = ...
 } Smpt_Dl_EnergyState;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Dl_Get_Type get_type;
@@ -528,7 +528,7 @@ typedef struct
   Smpt_dl_get_mmi mmi;
   Smpt_dl_file_info file_info;
 } Smpt_dl_get;
-typedef struct 
+typedef struct
 {
   uint32_t voltage;
   int32_t current;
@@ -536,7 +536,7 @@ typedef struct
   int8_t temperature;
   uint8_t energystate;
 } Smpt_dl_battery_status;
-typedef struct 
+typedef struct
 {
   _Bool file_system_ready;
   uint64_t used_size;
@@ -553,13 +553,13 @@ struct Smpt_dl_mmi_
   uint32_t time_length;
 };
 typedef struct Smpt_dl_mmi_ Smpt_dl_mmi;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_dl_mmi mmi;
   Smpt_dl_init dl_init;
 } Smpt_dl_send_mmi;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
@@ -573,50 +573,50 @@ typedef struct
   char firmwareVersion[128 + 1];
   Smpt_dl_file_info file_info;
 } Smpt_dl_get_ack;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   uint32_t block_number;
   uint16_t n_bytes_per_block;
   uint8_t data[512];
 } Smpt_dl_send_file;
-typedef struct 
+typedef struct
 {
   float value;
   Smpt_Dl_Signal_Type signal_type;
   Smpt_Dl_Electrode_Status status;
 } Smpt_dl_electrode_sample;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   uint8_t n_channels;
   uint32_t time_offset;
   Smpt_dl_electrode_sample electrode_samples[8];
 } Smpt_dl_send_live_data;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   uint32_t block_number;
 } Smpt_dl_send_file_ack;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
 } Smpt_dl_start_ack;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   uint64_t time;
 } Smpt_dl_stop_ack;
-typedef struct 
+typedef struct
 {
   Smpt_Dl_Signal_Type signal_type;
   uint32_t value;
   uint8_t electrode_status;
 } Smpt_dl_channel_measurement;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Hardware_Module_Undefined = ...,
   Smpt_Dl_Hardware_Module_Bluetooth = ...,
@@ -625,20 +625,20 @@ typedef enum
   Smpt_Dl_Hardware_Module_Research = ...,
   Smpt_Dl_Hardware_Module_Last = ...
 } Smpt_Dl_Hardware_Module;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Dl_Hardware_Module hardware_module;
   _Bool switch_on_off;
 } Smpt_dl_power_module;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   Smpt_Dl_Hardware_Module hardware_module;
   _Bool switch_on_off;
 } Smpt_dl_power_module_ack;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Sys_Type_Undefined = ...,
   Smpt_Dl_Sys_Type_Deletefile = ...,
@@ -646,20 +646,20 @@ typedef enum
   Smpt_Dl_Sys_Type_Device_Storage = ...,
   Smpt_Dl_Sys_Type_Device_Last_Item = ...
 } Smpt_Dl_Sys_Type;
-typedef enum 
+typedef enum
 {
   Smpt_Dl_Sys_State_Undefined = ...,
   Smpt_Dl_Sys_State_Successful = ...,
   Smpt_Dl_Sys_State_Last_Item = ...
 } Smpt_Dl_Sys_State;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
   Smpt_Dl_Sys_Type type;
   char file_name[128 + 1];
 } Smpt_dl_sys;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
@@ -667,25 +667,25 @@ typedef struct
   char file_name[128 + 1];
   Smpt_Dl_Sys_State state;
 } Smpt_dl_sys_ack;
-typedef enum 
+typedef enum
 {
   Smpt_Ll_Interpolation_Jump = ...,
   Smpt_Ll_Interpolation_Linear = ...,
   Smpt_Ll_Interpolation_Last_Item = ...
 } Smpt_Ll_Interpolation_Mode;
-typedef struct 
+typedef struct
 {
   Smpt_Measurement measurement_type;
   Smpt_High_Voltage high_voltage_level;
   uint8_t packet_number;
 } Smpt_ll_init;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
 } Smpt_ll_init_ack;
 typedef Smpt_point Smpt_ll_point;
-typedef struct 
+typedef struct
 {
   _Bool enable_stimulation;
   Smpt_Channel channel;
@@ -694,7 +694,7 @@ typedef struct
   Smpt_ll_point points[16];
   uint8_t packet_number;
 } Smpt_ll_channel_config;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;
@@ -705,14 +705,14 @@ typedef struct
   uint16_t measurement[128];
 } Smpt_ll_channel_config_ack;
 typedef Smpt_ack Smpt_ll_ack;
-typedef struct 
+typedef struct
 {
   _Bool stop_all_channels_on_error;
   uint8_t packet_number;
 } Smpt_ml_init;
 typedef Smpt_ack Smpt_ml_ack;
 typedef Smpt_point Smpt_ml_point;
-typedef struct 
+typedef struct
 {
   uint8_t ramp;
   float period;
@@ -720,30 +720,30 @@ typedef struct
   uint8_t number_of_points;
   Smpt_ml_point points[16];
 } Smpt_ml_channel_config;
-typedef struct 
+typedef struct
 {
   _Bool enable_channel[8];
   Smpt_ml_channel_config channel_config[8];
   uint8_t packet_number;
 } Smpt_ml_update;
-typedef enum 
+typedef enum
 {
   Smpt_Ml_Data_Stimulation = ...,
   Smpt_Ml_Data_Stimulation_Eight_Channels = ...,
   Smpt_Ml_Data_Channels = ...
 } Smpt_Ml_Data;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Ml_Data data_selection;
 } Smpt_ml_get_current_data;
-typedef enum 
+typedef enum
 {
   Smpt_Ml_Stimulation_Stopped = ...,
   Smpt_Ml_Stimulation_Running = ...,
   Smpt_Ml_Stimulation_Last_Item = ...
 } Smpt_Ml_Stimulation_State;
-typedef enum 
+typedef enum
 {
   Smpt_Ml_Channel_State_Ok = ...,
   Smpt_Ml_Channel_State_Electrode_Error = ...,
@@ -751,19 +751,19 @@ typedef enum
   Smpt_Ml_Channel_State_Low_Current_Error = ...,
   Smpt_Ml_Channel_State_Last_Item = ...
 } Smpt_Ml_Channel_State;
-typedef struct 
+typedef struct
 {
   _Bool is_valid;
   _Bool electrode_error[8];
   Smpt_Ml_Stimulation_State stimulation_state;
 } Smpt_ml_stimulation_data;
-typedef struct 
+typedef struct
 {
   _Bool is_valid;
   Smpt_Ml_Channel_State channel_state[8];
   Smpt_Ml_Stimulation_State stimulation_state[8];
 } Smpt_ml_stimulation_channels_data;
-typedef struct 
+typedef struct
 {
   uint8_t packet_number;
   Smpt_Result result;

@@ -125,7 +125,8 @@ class BuildCFFIModuleCommand(Command):
             else:
                 print("Warning: No extension module files found after build.")
                 print(
-                    "The build might have failed or saved the file in a different location."
+                    "The build might have failed or saved the "
+                    "file in a different location."
                 )
 
         except subprocess.CalledProcessError as e:
@@ -364,7 +365,8 @@ def copy_libs_to_package():
                     if os.path.exists(dll_path):
                         dll_dest_path = os.path.join(sciencemode_dir, dll_name)
                         print(
-                            f"Copying corresponding DLL {dll_name} to sciencemode package"
+                            f"Copying corresponding DLL {dll_name} "
+                            "to sciencemode package"
                         )
                         shutil.copy2(dll_path, dll_dest_path)
                         copied_files.append(dll_name)
@@ -379,7 +381,8 @@ def copy_libs_to_package():
                                 dll_name = os.path.basename(dll_file)
                                 dll_dest_path = os.path.join(sciencemode_dir, dll_name)
                                 print(
-                                    f"Copying alternative DLL {dll_name} to sciencemode package"
+                                    f"Copying alternative DLL {dll_name} "
+                                    "to sciencemode package"
                                 )
                                 shutil.copy2(dll_file, dll_dest_path)
                                 copied_files.append(dll_name)
@@ -418,7 +421,8 @@ def check_cffi_prerequisites():
     lib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib")
     if not os.path.exists(lib_dir):
         print(
-            f"Warning: Library directory {lib_dir} not found. Libraries may not be available."
+            f"Warning: Library directory {lib_dir} not found. "
+            "Libraries may not be available."
         )
         return False
 
@@ -430,13 +434,15 @@ def check_cffi_prerequisites():
         if libs:
             lib_found = True
             print(
-                f"Found library files: {', '.join(os.path.basename(lib) for lib in libs)}"
+                f"Found library files: "
+                f"{', '.join(os.path.basename(lib) for lib in libs)}"
             )
             break
 
     if not lib_found:
         print(
-            f"Warning: No libraries found in {lib_dir}. CFFI module may not build correctly."
+            f"Warning: No libraries found in {lib_dir}. "
+            "CFFI module may not build correctly."
         )
         return False
 
@@ -480,7 +486,8 @@ else:
                         print("Errors:")
                         print(result.stderr)
 
-                    # Since we've already built the module directly, we don't need to use cffi_modules
+                    # Since we've already built the module directly,
+                    # we don't need to use cffi_modules
                     cffi_modules_list = []
                 else:
                     print(f"Warning: CFFI module file {cffi_path} not found!")

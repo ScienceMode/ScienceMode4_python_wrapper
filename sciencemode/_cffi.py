@@ -312,7 +312,7 @@ def _init_smpt_lib():
 
 
 # Function to load library directly (useful for testing and debug)
-def load_library():
+def load_library():  # noqa: C901
     """Try to load the SMPT library directly using ffi.dlopen().
 
     This is useful for direct testing without building the extension module.

@@ -84,7 +84,11 @@ def test_library_location():
 
     # List all files in the package directory
     files = os.listdir(package_dir)
-    library_files = [f for f in files if f.startswith("libsmpt") or f.endswith(".dll") or f.endswith(".lib")]
+    library_files = [
+        f
+        for f in files
+        if f.startswith("libsmpt") or f.endswith(".dll") or f.endswith(".lib")
+    ]
 
     print(f"Library files in package directory: {library_files}")
     assert len(library_files) > 0, "Library files found in package directory"

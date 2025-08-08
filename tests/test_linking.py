@@ -77,7 +77,10 @@ def test_library_files_exist():
     lib_files = [
         f
         for f in os.listdir(package_dir)
-        if f.startswith("lib") or f.endswith(".dll") or f.endswith(".so") or f.endswith(".lib")
+        if f.startswith("lib")
+        or f.endswith(".dll")
+        or f.endswith(".so")
+        or f.endswith(".lib")
     ]
     assert len(lib_files) > 0, f"Library files found: {lib_files}"
 
