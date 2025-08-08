@@ -146,46 +146,50 @@ else:
 # 1. Setting the appropriate platform macros based on the current system
 # 2. Defining away GCC-specific extensions that pycparser can't handle
 # 3. Setting up include paths for both real headers and fake headers
-DEFINE_ARGS = [
-    # Platform definitions - set according to current platform
-    # but make sure to handle platform-specific fields in structures
-    "-D{}".format(
-        "_WIN32"
-        if sys.platform.startswith("win")
-        else "__APPLE__"
-        if sys.platform.startswith("darwin")
-        else "__linux__"
-    ),
-    "-D__attribute__(x)=",
-    "-D__inline=",
-    "-D__restrict=",
-    "-D__extension__=",
-    "-D__GNUC_VA_LIST=",
-    "-D__inline__=",
-    "-D__forceinline=",
-    "-D__volatile__=",
-    "-D__MINGW_NOTHROW=",
-    "-D__nothrow__=",
-    "-DCRTIMP=",
-    "-DSDL_FORCE_INLINE=",
-    "-DDOXYGEN_SHOULD_IGNORE_THIS=",
-    "-D_PROCESS_H_=",
-    "-U__GNUC__",
-    "-Ui386",
-    "-U__i386__",
-    "-U__MINGW32__",
-    "-DNT_INCLUDED",
-    "-D_MSC_VER=1900",
-    # Define HANDLE type for Windows to make CFFI happy
-    "-DHANDLE=void*",
-    "-L" + smpt_lib_path,
-    "-Iutils/fake_libc_include",
-    "-Iutils/fake_windows_include",
-    "-I" + smpt_include_path1,
-    "-I" + smpt_include_path2,
-    "-I" + smpt_include_path3,
-    "-I" + smpt_include_path4,
-]
+DEFINE_ARGS = (
+    [
+        # Platform definitions - set according to current platform
+        # but make sure to handle platform-specific fields in structures
+        "-D{}".format(
+            "_WIN32"
+            if sys.platform.startswith("win")
+            else "__APPLE__"
+            if sys.platform.startswith("darwin")
+            else "__linux__"
+        ),
+        "-D__attribute__(x)=",
+        "-D__inline=",
+        "-D__restrict=",
+        "-D__extension__=",
+        "-D__GNUC_VA_LIST=",
+        "-D__inline__=",
+        "-D__forceinline=",
+        "-D__volatile__=",
+        "-D__MINGW_NOTHROW=",
+        "-D__nothrow__=",
+        "-DCRTIMP=",
+        "-DSDL_FORCE_INLINE=",
+        "-DDOXYGEN_SHOULD_IGNORE_THIS=",
+        "-D_PROCESS_H_=",
+        "-U__GNUC__",
+        "-Ui386",
+        "-U__i386__",
+        "-U__MINGW32__",
+        "-DNT_INCLUDED",
+    ]
+    + (["-D_MSC_VER=1900"] if sys.platform.startswith("win") else [])
+    + [
+        # Define HANDLE type for Windows to make CFFI happy
+        "-DHANDLE=void*",
+        "-L" + smpt_lib_path,
+        "-Iutils/fake_libc_include",
+        "-Iutils/fake_windows_include",
+        "-I" + smpt_include_path1,
+        "-I" + smpt_include_path2,
+        "-I" + smpt_include_path3,
+        "-I" + smpt_include_path4,
+    ]
+)
 
 # List of function names that should be excluded from processing
 FUNCTION_BLACKLIST = {}  # Empty for now, but can be populated if needed
