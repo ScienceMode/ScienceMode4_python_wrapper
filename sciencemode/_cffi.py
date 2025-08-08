@@ -180,7 +180,13 @@ DEFINE_ARGS = (
     + (
         ["-D_MSC_VER=1900"]
         if sys.platform.startswith("win")
-        else ["-U_MSC_VER", "-D_Bool=int", "-Dbool=int", "-Dtrue=1", "-Dfalse=0"]
+        else [
+            "-U_MSC_VER",
+            "-D_Bool=unsigned char",
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
+        ]
     )
     + [
         # Define HANDLE type for Windows to make CFFI happy
@@ -585,8 +591,8 @@ def preprocess_header_manually(header_path):
         "SMPT_DLL": "",
         "UC_MAIN": "",
         "__cplusplus": "",
-        "_Bool": "char",
-        "bool": "char",
+        "_Bool": "unsigned char",  # Use unsigned char for better compatibility
+        "bool": "unsigned char",
         "true": "1",
         "false": "0",
     }
@@ -619,7 +625,7 @@ def preprocess_header_manually(header_path):
 
 #ifndef __bool_true_false_are_defined
 #define __bool_true_false_are_defined 1
-typedef char _Bool;
+typedef unsigned char _Bool;
 #endif
 
 #ifndef __cplusplus
@@ -670,8 +676,8 @@ def try_parse_with_better_args(header_path, header_name):
             "cpp_args": include_paths
             + [
                 # Essential definitions without fake libc that causes issues
-                "-D_Bool=char",
-                "-Dbool=char",
+                "-D_Bool=unsigned char",  # Use unsigned char instead of char for better compatibility
+                "-Dbool=unsigned char",
                 "-Dtrue=1",
                 "-Dfalse=0",
                 "-D__attribute__(x)=",
@@ -689,6 +695,9 @@ def try_parse_with_better_args(header_path, header_name):
                 "-DSMPT_EXPORTS=",
                 "-DSMPT_DLL=",
                 "-DUC_MAIN=",
+                # Add stdbool.h compatibility
+                "-D__bool_true_false_are_defined=1",
+                "-D__STDC_VERSION__=199901L",
             ],
         },
         # Fallback 1: cpp with minimal args only
@@ -696,8 +705,8 @@ def try_parse_with_better_args(header_path, header_name):
             "use_cpp": True,
             "cpp_args": include_paths
             + [
-                "-D_Bool=char",
-                "-Dbool=char",
+                "-D_Bool=unsigned char",
+                "-Dbool=unsigned char",
                 "-Dtrue=1",
                 "-Dfalse=0",
                 "-D__attribute__(x)=",
