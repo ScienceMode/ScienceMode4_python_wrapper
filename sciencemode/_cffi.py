@@ -291,6 +291,12 @@ class Collector(c_ast.NodeVisitor):
         if node.coord is None or coord.find(include_dir) != -1:
             typedecl = f"{self.generator.visit(node)};"
             typedecl = ARRAY_SIZEOF_PATTERN.sub("[...]", typedecl)
+
+            # Fix _Bool array compatibility issues
+            # Replace _Bool arrays with unsigned char arrays for CFFI compatibility
+            typedecl = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", typedecl)
+            typedecl = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", typedecl)
+
             if typedecl not in self.typedecls:
                 self.typedecls.append(typedecl)
 
@@ -572,6 +578,7 @@ def preprocess_header_manually(header_path):
     """Manually preprocess a header file by expanding simple #define statements.
 
     This is a fallback for when no C preprocessor is available.
+    This version is much more conservative to preserve header structure.
     """
     with open(header_path, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read()
@@ -585,53 +592,29 @@ def preprocess_header_manually(header_path):
     # Remove // style comments
     content = re.sub(r"//.*", "", content)
 
-    # Simple define replacements for common patterns
-    defines = {
-        "SMPT_EXPORTS": "",
-        "SMPT_DLL": "",
-        "UC_MAIN": "",
-        "__cplusplus": "",
-        "_Bool": "unsigned char",  # Use unsigned char for better compatibility
-        "bool": "unsigned char",
-        "true": "1",
-        "false": "0",
-    }
+    # Very conservative preprocessing - only fix things that definitely break pycparser
+    # Don't mess with complex #define statements or conditional compilation
 
-    # Add platform-specific defines
-    if platform.system() == "Windows":
-        defines["_WIN32"] = "1"
-        defines["_MSC_VER"] = "1900"
-        defines["_WINDOWS"] = "1"
-    elif platform.system() == "Linux":
-        defines["__linux__"] = "1"
-        defines["__unix__"] = "1"
-    else:  # Darwin/macOS
-        defines["__APPLE__"] = "1"
-        defines["__MACH__"] = "1"
+    # Handle _Bool arrays specifically for compatibility
+    # Replace _Bool arrays with unsigned char arrays to fix CFFI type issues
+    content = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", content)
+    content = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", content)
 
-    # Replace simple #define statements and clean up
-    for define, value in defines.items():
-        # Add proper #define if not already present
-        if f"#define {define}" not in content:
-            content = f"#define {define} {value}\n" + content
-        # Also handle direct usage
-        content = content.replace(f"#{define}", f"#define {define} {value}")
-
-    # Add essential type definitions that might be missing
+    # Only add the most essential type definitions that pycparser needs
+    # Don't redefine __STDC_VERSION__ - that causes the macOS redefinition warning
     essential_types = """
-#ifndef __STDC_VERSION__
-#define __STDC_VERSION__ 199901L
-#endif
-
+/* Minimal essential types for pycparser - don't redefine __STDC_VERSION__ */
 #ifndef __bool_true_false_are_defined
 #define __bool_true_false_are_defined 1
 typedef unsigned char _Bool;
 #endif
 
 #ifndef __cplusplus
+#ifndef bool
 #define bool _Bool
 #define true 1
 #define false 0
+#endif
 #endif
 
 /* Define common GCC attributes away */
@@ -642,9 +625,6 @@ typedef unsigned char _Bool;
 #define __always_inline
 #define __builtin_va_list char*
 #define __asm__(x)
-#define __signed__ signed
-#define __const const
-#define __volatile__ volatile
 
 """
     content = essential_types + content
@@ -695,9 +675,10 @@ def try_parse_with_better_args(header_path, header_name):
                 "-DSMPT_EXPORTS=",
                 "-DSMPT_DLL=",
                 "-DUC_MAIN=",
-                # Add stdbool.h compatibility
+                # Add stdbool.h compatibility - but don't override built-in __STDC_VERSION__
                 "-D__bool_true_false_are_defined=1",
-                "-D__STDC_VERSION__=199901L",
+                # Don't redefine __STDC_VERSION__ - let the compiler use its built-in value
+                # This prevents the "macro redefined" warning on macOS
             ],
         },
         # Fallback 1: cpp with minimal args only
@@ -714,6 +695,7 @@ def try_parse_with_better_args(header_path, header_name):
                 "-DSMPT_API=",  # Define away SMPT_API
                 "-DSMPT_EXPORTS=",
                 "-DSMPT_DLL=",
+                # Don't add any manual constants here - let the headers define them naturally
             ],
         },
         # Fallback 2: no cpp at all
@@ -840,22 +822,27 @@ if not parse_success:
     )
 
 defines = set()
-for header_path in HEADERS:
-    with open(os.sep.join([include_dir, header_path])) as header_file:
-        header = header_file.read()
-        for match in DEFINE_PATTERN.finditer(header):
-            if (
-                match.group(1) in DEFINE_BLACKLIST
-                or match.group(1) in collector.typedecls
-                or match.group(1) in collector.functions
-            ):
-                continue
-            try:
-                int(match.group(2), 0)
-                defines.add(f"#define {match.group(1)} {match.group(2)}")
-            except Exception:
-                defines.add(f"#define {match.group(1)} ...")
 
+# Don't manually add constants - let them be parsed from headers naturally
+# This prevents issues with conditional compilation and macro redefinition
+
+for header_path in HEADERS:
+    header_full_path = os.sep.join([include_dir, header_path])
+    if os.path.exists(header_full_path):
+        with open(header_full_path, encoding="utf-8", errors="ignore") as header_file:
+            header = header_file.read()
+            for match in DEFINE_PATTERN.finditer(header):
+                if (
+                    match.group(1) in DEFINE_BLACKLIST
+                    or match.group(1) in collector.typedecls
+                    or match.group(1) in collector.functions
+                ):
+                    continue
+                try:
+                    int(match.group(2), 0)
+                    defines.add(f"#define {match.group(1)} {match.group(2)}")
+                except Exception:
+                    defines.add(f"#define {match.group(1)} ...")
 print(
     f"Processing {len(defines)} defines, {len(collector.typedecls)} types, "
     f"{len(collector.functions)} functions"
@@ -863,6 +850,7 @@ print(
 
 cdef = "\n".join(itertools.chain(*[defines, collector.typedecls, collector.functions]))
 
+# Post-process the cdef to fix any remaining compatibility issues
 cdef = cdef.replace("[Smpt_Length_Max_Packet_Size]", "[1200]")
 cdef = cdef.replace("[Smpt_Length_Packet_Input_Buffer_Rows]", "[100]")
 cdef = cdef.replace(
@@ -873,6 +861,11 @@ cdef = cdef.replace("[Smpt_Length_Number_Of_Acks]", "[100]")
 cdef = cdef.replace("[Smpt_Length_Device_Id]", "[10]")
 cdef = cdef.replace("[Smpt_Length_Points]", "[16]")
 cdef = cdef.replace("[Smpt_Length_Number_Of_Channels]", "[8]")
+
+# Final cleanup: ensure all _Bool arrays are converted to unsigned char arrays
+# This handles any cases that might have been missed during parsing
+cdef = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
+cdef = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 
 # Fix platform-specific field errors
 if "serial_port_handle_" in cdef and not sys.platform.startswith("win"):
