@@ -179,7 +179,15 @@ DEFINE_ARGS = (
         "-DNT_INCLUDED",
     ]
     + (
-        ["-D_MSC_VER=1900"]
+        [
+            "-D_MSC_VER=1900",
+            # Windows-specific: Define __asm__ with variadic arguments to handle both single and multi-argument usage
+            "-D__asm__=",
+            # Additional Windows inline assembly compatibility
+            "-D__declspec(x)=",
+            "-D__forceinline=",
+            "-D__inline=",
+        ]
         if sys.platform.startswith("win")
         else [
             "-U_MSC_VER",
@@ -622,7 +630,12 @@ def preprocess_header_manually(header_path):
 
     # Only add the most essential type definitions that pycparser needs
     # Don't redefine __STDC_VERSION__ - that causes the macOS redefinition warning
-    essential_types = """
+    if platform.system() == "Windows":
+        asm_definition = "#define __asm__"
+    else:
+        asm_definition = "#define __asm__(...)"
+
+    essential_types = f"""
 /* Minimal essential types for pycparser - don't redefine __STDC_VERSION__ */
 #ifndef __bool_true_false_are_defined
 #define __bool_true_false_are_defined 1
@@ -644,7 +657,7 @@ typedef unsigned char _Bool;
 #define __inline
 #define __always_inline
 #define __builtin_va_list char*
-#define __asm__(x)
+{asm_definition}
 
 """
     content = essential_types + content
@@ -669,6 +682,12 @@ def try_parse_with_better_args(header_path, header_name):
         f"-I{include_dir}/dyscom-level",
     ]
 
+    # Platform-specific __asm__ definition
+    if platform.system() == "Windows":
+        asm_definition = "-D__asm__="
+    else:
+        asm_definition = "-D__asm__(...)="
+
     parsing_attempts = [
         # Primary approach: use cpp with optimized args but NO fake libc
         {
@@ -686,7 +705,7 @@ def try_parse_with_better_args(header_path, header_name):
                 "-D__inline=",
                 "-D__always_inline=",
                 "-D__builtin_va_list=char*",
-                "-D__asm__(x)=",
+                asm_definition,
                 "-D__signed__=signed",
                 "-D__const=const",
                 "-D__volatile__=volatile",
