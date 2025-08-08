@@ -177,7 +177,11 @@ DEFINE_ARGS = (
         "-U__MINGW32__",
         "-DNT_INCLUDED",
     ]
-    + (["-D_MSC_VER=1900"] if sys.platform.startswith("win") else [])
+    + (
+        ["-D_MSC_VER=1900"]
+        if sys.platform.startswith("win")
+        else ["-U_MSC_VER", "-Dstdbool.h", "-Dbool=int", "-Dtrue=1", "-Dfalse=0"]
+    )
     + [
         # Define HANDLE type for Windows to make CFFI happy
         "-DHANDLE=void*",
