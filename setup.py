@@ -54,6 +54,91 @@ class CMakeExtension(Extension):
         self.sourcedir = os.path.abspath(sourcedir)
 
 
+class BuildCFFIModuleCommand(Command):
+    """Custom command to build the CFFI module explicitly."""
+
+    description = "Build the CFFI module directly"
+    user_options = [
+        ("build-type=", None, "Specify the CMake build type (Debug/Release)"),
+    ]
+
+    def initialize_options(self):
+        self.build_type = "Release"
+
+    def finalize_options(self):
+        if self.build_type not in ["Debug", "Release", "RelWithDebInfo", "MinSizeRel"]:
+            print(
+                f"Warning: Unknown build type '{self.build_type}', "
+                "defaulting to 'Release'"
+            )
+            self.build_type = "Release"
+
+    def run(self):
+        """Build the CFFI module directly using Python's subprocess."""
+        print("=" * 80)
+        print(f"Building CFFI module directly (Build type: {self.build_type})")
+        print("=" * 80)
+
+        # Get the CFFI module path
+        cffi_path = os.path.join(os.getcwd(), "sciencemode", "_cffi.py")
+        if not os.path.exists(cffi_path):
+            print(f"Error: CFFI module file {cffi_path} not found!")
+            return
+
+        # Make sure the sciencemode package is importable
+        sys.path.insert(0, os.path.dirname(os.getcwd()))
+
+        # Set environment variable for build type
+        os.environ["CMAKE_BUILD_TYPE"] = self.build_type
+
+        try:
+            # Run the CFFI module directly to build the extension
+            print(f"Running {sys.executable} {cffi_path}")
+            result = subprocess.run(
+                [sys.executable, cffi_path],
+                cwd=os.path.dirname(cffi_path),
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            print("Output:")
+            print(result.stdout)
+
+            if result.stderr:
+                print("Errors:")
+                print(result.stderr)
+
+            # Check if the module was created
+            extension_name = "_sciencemode"
+            if platform.system() == "Windows":
+                ext_pattern = f"{extension_name}*.pyd"
+            else:
+                ext_pattern = f"{extension_name}*.so"
+
+            extensions = glob.glob(
+                os.path.join(os.path.dirname(cffi_path), ext_pattern)
+            )
+            if extensions:
+                print(
+                    f"Success! CFFI extension module(s) built: {', '.join(extensions)}"
+                )
+            else:
+                print("Warning: No extension module files found after build.")
+                print(
+                    "The build might have failed or saved the file in a different location."
+                )
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error building CFFI module: {e}")
+            if hasattr(e, "stdout") and e.stdout:
+                print("Output:")
+                print(e.stdout)
+            if hasattr(e, "stderr") and e.stderr:
+                print("Error details:")
+                print(e.stderr)
+            raise RuntimeError("CFFI module build failed!") from e
+
+
 class BuildLibraryCommand(Command):
     """Custom command to build just the SMPT C library."""
 
@@ -270,6 +355,37 @@ def copy_libs_to_package():
                 shutil.copy2(lib_file, dest_path)
                 copied_files.append(lib_name)
 
+                # For Windows, make sure both DLL and LIB files are present
+                if platform.system() == "Windows" and lib_name.endswith(".lib"):
+                    # Look for corresponding DLL file
+                    base_name = os.path.splitext(lib_name)[0]
+                    dll_name = f"{base_name}.dll"
+                    dll_path = os.path.join(lib_dir, dll_name)
+                    if os.path.exists(dll_path):
+                        dll_dest_path = os.path.join(sciencemode_dir, dll_name)
+                        print(
+                            f"Copying corresponding DLL {dll_name} to sciencemode package"
+                        )
+                        shutil.copy2(dll_path, dll_dest_path)
+                        copied_files.append(dll_name)
+                    else:
+                        print(
+                            f"Warning: Could not find corresponding DLL for {lib_name}"
+                        )
+
+                        # Try to find any DLL that starts with the same name
+                        for dll_file in glob.glob(os.path.join(lib_dir, "*.dll")):
+                            if os.path.basename(dll_file).startswith(base_name):
+                                dll_name = os.path.basename(dll_file)
+                                dll_dest_path = os.path.join(sciencemode_dir, dll_name)
+                                print(
+                                    f"Copying alternative DLL {dll_name} to sciencemode package"
+                                )
+                                shutil.copy2(dll_file, dll_dest_path)
+                                copied_files.append(dll_name)
+
+        print(f"Copied library files: {', '.join(copied_files)}")
+
         # Create symlinks on Unix-like systems
         # Static libraries don't need symlinks, but keep this for backward compatibility
         if platform.system() != "Windows" and any(
@@ -292,11 +408,38 @@ except Exception as e:
 
 # Check for CFFI prerequisites
 def check_cffi_prerequisites():
-    """Check that all required CFFI files exist."""
+    """Check that all required CFFI files exist and libraries can be found."""
     cffi_path = os.path.join("sciencemode", "_cffi.py")
     if not os.path.exists(cffi_path):
         print(f"Warning: {cffi_path} not found. CFFI module may not build correctly.")
         return False
+
+    # Check for library files
+    lib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib")
+    if not os.path.exists(lib_dir):
+        print(
+            f"Warning: Library directory {lib_dir} not found. Libraries may not be available."
+        )
+        return False
+
+    platform_config = PlatformConfig.get_config()
+    lib_found = False
+
+    for pattern in platform_config["lib_patterns"]:
+        libs = glob.glob(os.path.join(lib_dir, pattern))
+        if libs:
+            lib_found = True
+            print(
+                f"Found library files: {', '.join(os.path.basename(lib) for lib in libs)}"
+            )
+            break
+
+    if not lib_found:
+        print(
+            f"Warning: No libraries found in {lib_dir}. CFFI module may not build correctly."
+        )
+        return False
+
     return True
 
 
@@ -316,6 +459,53 @@ else:
     cffi_ready = check_cffi_prerequisites()
 
     # Full setup with CFFI for normal installation
+    try:
+        # First try to build the CFFI module directly if we're on Windows
+        if platform.system() == "Windows":
+            try:
+                # Build the module directly without using the Command class
+                cffi_path = os.path.join(os.getcwd(), "sciencemode", "_cffi.py")
+                if os.path.exists(cffi_path):
+                    print("Building CFFI module directly for Windows...")
+                    result = subprocess.run(
+                        [sys.executable, cffi_path],
+                        cwd=os.path.dirname(cffi_path),
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    print("Direct CFFI build result:")
+                    print(result.stdout)
+                    if result.stderr:
+                        print("Errors:")
+                        print(result.stderr)
+
+                    # Since we've already built the module directly, we don't need to use cffi_modules
+                    cffi_modules_list = []
+                else:
+                    print(f"Warning: CFFI module file {cffi_path} not found!")
+                    cffi_modules_list = (
+                        [os.sep.join(["sciencemode", "_cffi.py:ffi"])]
+                        if cffi_ready
+                        else []
+                    )
+            except Exception as e:
+                print(f"Direct CFFI build failed: {e}")
+                cffi_modules_list = (
+                    [os.sep.join(["sciencemode", "_cffi.py:ffi"])] if cffi_ready else []
+                )
+        else:
+            # On non-Windows platforms, use the standard cffi_modules approach
+            cffi_modules_list = (
+                [os.sep.join(["sciencemode", "_cffi.py:ffi"])] if cffi_ready else []
+            )
+    except Exception as e:
+        print(f"Warning: Direct CFFI module build failed: {e}")
+        print("Falling back to standard cffi_modules approach")
+        cffi_modules_list = (
+            [os.sep.join(["sciencemode", "_cffi.py:ffi"])] if cffi_ready else []
+        )
+
     setup(
         name="sciencemode-cffi",
         packages=["sciencemode"],
@@ -332,14 +522,11 @@ else:
             "Programming Language :: Python :: 3",
         ],
         setup_requires=["cffi>=1.0.0", "pycparser>=2.14"],
-        cffi_modules=[
-            os.sep.join(["sciencemode", "_cffi.py:ffi"]),
-        ]
-        if cffi_ready
-        else [],
+        cffi_modules=cffi_modules_list,
         install_requires=["cffi>=1.0.0"],
         cmdclass={
             "build_lib": BuildLibraryCommand,
+            "build_cffi": BuildCFFIModuleCommand,
         },
         # Make sure library is included in the package
         include_package_data=True,

@@ -105,12 +105,12 @@ def test_packet_number_generator(sm):
             packet_number = sm.smpt_packet_number_generator_next(device)
 
             # Verify the packet number was changed
-            assert packet_number == prev_value, (
-                f"Should return previous value ({prev_value})"
-            )
-            assert device.current_packet_number != prev_value, (
-                "Should update the packet number"
-            )
+            assert (
+                packet_number == prev_value
+            ), f"Should return previous value ({prev_value})"
+            assert (
+                device.current_packet_number != prev_value
+            ), "Should update the packet number"
     else:
         # Fall back to original implementation without resource management
         device = sm.ffi.new("Smpt_device*")
@@ -130,11 +130,11 @@ def test_packet_number_generator(sm):
         packet_number = sm.smpt_packet_number_generator_next(device)
 
         # Verify the packet number was changed
-        assert packet_number == prev_value, (
-            f"Should return previous value ({prev_value})"
-        )
-        assert device.current_packet_number != prev_value, (
-            "Should update the packet number"
-        )
+        assert (
+            packet_number == prev_value
+        ), f"Should return previous value ({prev_value})"
+        assert (
+            device.current_packet_number != prev_value
+        ), "Should update the packet number"
 
     # Skip the max value test since we don't know if it's int8 or uint8

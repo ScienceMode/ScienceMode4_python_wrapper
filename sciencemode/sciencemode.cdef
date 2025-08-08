@@ -1,0 +1,899 @@
+#define SMPT_DL_MAX_STRING_LENGTH 128
+#define SMPT_DL_2KHZ 2000
+#define SMPT_DL_MAX_N_MEASUREMENTS 8
+#define SMPT_DL_MAX_CHANNELS 8
+#define SMPT_DL_MAX_INVESTIGATOR_NAME_LENGTH ...
+#define SMPT_DL_1KHZ 1000
+#define SMPT_DL_4KHZ 4000
+#define SMPT_DL_MAX_FILE_ID_LENGTH 60
+#define SMPT_DL_FILE_SIZE_BYTES 8
+#define SMPT_DL_MAX_PATIENT_NAME_LENGTH ...
+#define SMPT_DL_MAX_FILE_NAME_LENGTH ...
+#define SMPT_DL_GUID_STRING_LENGTH 36
+#define SMPT_DL_MAX_BLOCK_BYTES_LENGTH 512
+typedef enum 
+{
+  Smpt_Cmd_Ll_Init = ...,
+  Smpt_Cmd_Ll_Init_Ack = ...,
+  Smpt_Cmd_Ll_Channel_Config = ...,
+  Smpt_Cmd_Ll_Channel_Config_Ack = ...,
+  Smpt_Cmd_Ll_Stop = ...,
+  Smpt_Cmd_Ll_Stop_Ack = ...,
+  Smpt_Cmd_Ll_Emg_Switches = ...,
+  Smpt_Cmd_Ll_Emg_Switches_Ack = ...,
+  Smpt_Cmd_Ml_Init = ...,
+  Smpt_Cmd_Ml_Init_Ack = ...,
+  Smpt_Cmd_Ml_Update = ...,
+  Smpt_Cmd_Ml_Update_Ack = ...,
+  Smpt_Cmd_Ml_Stop = ...,
+  Smpt_Cmd_Ml_Stop_Ack = ...,
+  Smpt_Cmd_Ml_Get_Current_Data = ...,
+  Smpt_Cmd_Ml_Get_Current_Data_Ack = ...,
+  Smpt_Cmd_Get_Version_Main = ...,
+  Smpt_Cmd_Get_Version_Main_Ack = ...,
+  Smpt_Cmd_Get_Device_Id = ...,
+  Smpt_Cmd_Get_Device_Id_Ack = ...,
+  Smpt_Cmd_Get_Battery_Status = ...,
+  Smpt_Cmd_Get_Battery_Status_Ack = ...,
+  Smpt_Cmd_Set_Power = ...,
+  Smpt_Cmd_Set_Power_Ack = ...,
+  Smpt_Cmd_Reset = ...,
+  Smpt_Cmd_Reset_Ack = ...,
+  Smpt_Cmd_Get_Version_Stim = ...,
+  Smpt_Cmd_Get_Version_Stim_Ack = ...,
+  Smpt_Cmd_Get_Stim_Status = ...,
+  Smpt_Cmd_Get_Stim_Status_Ack = ...,
+  Smpt_Cmd_Get_Main_Status = ...,
+  Smpt_Cmd_Get_Main_Status_Ack = ...,
+  Smpt_Cmd_General_Error = ...,
+  Smpt_Cmd_Unknown_Cmd = ...,
+  Smpt_Cmd_Get_Extended_Version = ...,
+  Smpt_Cmd_Get_Extended_Version_Ack = ...,
+  Smpt_Cmd_Dl_Init = ...,
+  Smpt_Cmd_Dl_Init_Ack = ...,
+  Smpt_Cmd_Dl_Start = ...,
+  Smpt_Cmd_Dl_Start_Ack = ...,
+  Smpt_Cmd_Dl_Stop = ...,
+  Smpt_Cmd_Dl_Stop_Ack = ...,
+  Smpt_Cmd_Dl_Send_Live_Data = ...,
+  Smpt_Cmd_Dl_Send_File = ...,
+  Smpt_Cmd_Dl_Send_MMI = ...,
+  Smpt_Cmd_Dl_Get = ...,
+  Smpt_Cmd_Dl_Get_Ack = ...,
+  Smpt_Cmd_Dl_Power_Module = ...,
+  Smpt_Cmd_Dl_Power_Module_Ack = ...,
+  Smpt_Cmd_Dl_Send_File_Ack = ...,
+  Smpt_Cmd_Dl_Sys = ...,
+  Smpt_Cmd_Dl_Sys_Ack = ...,
+  Smpt_Cmd_Bl_Init = ...,
+  Smpt_Cmd_Bl_Init_Ack = ...,
+  Smpt_Cmd_Bl_Update_Init = ...,
+  Smpt_Cmd_Bl_Update_Init_Ack = ...,
+  Smpt_Cmd_Bl_Update_Block = ...,
+  Smpt_Cmd_Bl_Update_Block_Ack = ...,
+  Smpt_Cmd_Bl_Update_Stop = ...,
+  Smpt_Cmd_Bl_Update_Stop_Ack = ...,
+  Smpt_Cmd_Sl_Test_Memory_Card = ...,
+  Smpt_Cmd_Sl_Test_Memory_Card_Ack = ...,
+  Smpt_Cmd_Sl_Set_Debug = ...,
+  Smpt_Cmd_Sl_Set_Debug_Ack = ...,
+  Smpt_Cmd_Sl_Debug_Message = ...,
+  Smpt_Cmd_Sl_Set_Fuel_Gauge = ...,
+  Smpt_Cmd_Sl_Set_Fuel_Gauge_Ack = ...,
+  Smpt_Cmd_Sl_Set_Bluetooth = ...,
+  Smpt_Cmd_Sl_Set_Bluetooth_Ack = ...,
+  Smpt_Cmd_Sl_Set_Device_Id = ...,
+  Smpt_Cmd_Sl_Set_Device_Id_Ack = ...,
+  Smpt_Cmd_Last_Item = ...
+} Smpt_Cmd;
+typedef enum 
+{
+  Smpt_Cmd_Numbers_Low_Level_Min = ...,
+  Smpt_Cmd_Numbers_Low_Level_Max = ...,
+  Smpt_Cmd_Numbers_Mid_Level_Min = ...,
+  Smpt_Cmd_Numbers_Mid_Level_Max = ...,
+  Smpt_Cmd_Numbers_General_Level_Min = ...,
+  Smpt_Cmd_Numbers_General_Level_Max = ...,
+  Smpt_Cmd_Numbers_Service_Level_Min = ...,
+  Smpt_Cmd_Numbers_Service_Level_Max = ...,
+  Smpt_Cmd_Numbers_DysCom_Level_Min = ...,
+  Smpt_Cmd_Numbers_DysCom_Level_Max = ...,
+  Smpt_Cmd_Numbers_Boot_Level_Min = ...,
+  Smpt_Cmd_Numbers_Boot_Level_Max = ...
+} Smpt_Cmd_Numbers_Min_Max;
+typedef enum 
+{
+  Smpt_Result_Successful = ...,
+  Smpt_Result_Transfer_Error = ...,
+  Smpt_Result_Parameter_Error = ...,
+  Smpt_Result_Protocol_Error = ...,
+  Smpt_Result_Uc_Stim_Timeout_Error = ...,
+  Smpt_Result_Emg_Timeout_Error = ...,
+  Smpt_Result_Emg_Register_Error = ...,
+  Smpt_Result_Not_Initialized_Error = ...,
+  Smpt_Result_Hv_Error = ...,
+  Smpt_Result_Demux_Timeout_Error = ...,
+  Smpt_Result_Electrode_Error = ...,
+  Smpt_Result_Invalid_Cmd_Error = ...,
+  Smpt_Result_Demux_Parameter_Error = ...,
+  Smpt_Result_Demux_Not_Initialized_Error = ...,
+  Smpt_Result_Demux_Transfer_Error = ...,
+  Smpt_Result_Demux_Unknown_Ack_Error = ...,
+  Smpt_Result_Pulse_Timeout_Error = ...,
+  Smpt_Result_Fuel_Gauge_Error = ...,
+  Smpt_Result_Live_Signal_Error = ...,
+  Smpt_Result_File_Transmission_Timeout = ...,
+  Smpt_Result_File_Not_Found = ...,
+  Smpt_Result_Busy = ...,
+  Smpt_Result_File_Error = ...,
+  Smpt_Result_Flash_Erase_Error = ...,
+  Smpt_Result_Flash_Write_Error = ...,
+  Smpt_Result_Unknown_Controller_Error = ...,
+  Smpt_Result_Firmware_Too_Large_Error = ...,
+  Smpt_Result_Fuel_Gauge_Not_Programmed = ...,
+  Smpt_Result_Pulse_Low_Current_Error = ...,
+  Smpt_Result_Last_Item = ...
+} Smpt_Result;
+typedef enum 
+{
+  Smpt_Length_Number_Of_Channels = ...,
+  Smpt_Length_Number_Of_Acks = ...,
+  Smpt_Length_Serial_Port_Chars = ...,
+  Smpt_Length_Points = ...,
+  Smpt_Length_Header_Size = ...,
+  Smpt_Length_Max_Packet_Size = ...,
+  Smpt_Length_Max_Packet_Size_No_Emg = ...,
+  Smpt_Length_Packet_Input_Buffer_Rows = ...,
+  Smpt_Length_Debug_Messages = ...,
+  Smpt_Length_Min_Packet_Size = ...,
+  Smpt_Length_Device_Id = ...,
+  Smpt_Length_Power_Modules = ...,
+  Smpt_Length_Packet_Output_Buffer = ...,
+  Smpt_Length_File_Name = ...
+} Smpt_Length;
+typedef enum 
+{
+  Smpt_Packet_Number_Modulo = ...
+} Smpt_Constants_Diverse;
+typedef enum 
+{
+  Smpt_Limit_Header_Size = ...,
+  Smpt_Limit_Max_Packet_Size = ...,
+  Smpt_Limit_Max_Packet_Size_No_Emg = ...,
+  Smpt_Limit_Min_Packet_Size = ...
+} Smpt_Limit;
+typedef enum 
+{
+  Smpt_Channel_Red = ...,
+  Smpt_Channel_Blue = ...,
+  Smpt_Channel_Black = ...,
+  Smpt_Channel_White = ...,
+  Smpt_Channel_Undefined = ...
+} Smpt_Channel;
+typedef enum 
+{
+  Smpt_Connector_Yellow = ...,
+  Smpt_Connector_Green = ...,
+  Smpt_Connector_Undefined = ...
+} Smpt_Connector;
+typedef enum 
+{
+  Smpt_High_Voltage_Default = ...,
+  Smpt_High_Voltage_Off = ...,
+  Smpt_High_Voltage_30V = ...,
+  Smpt_High_Voltage_60V = ...,
+  Smpt_High_Voltage_90V = ...,
+  Smpt_High_Voltage_120V = ...,
+  Smpt_High_Voltage_150V = ...,
+  Smpt_High_Voltage_Last_Item = ...
+} Smpt_High_Voltage;
+typedef enum 
+{
+  Smpt_Measurement_None = ...,
+  Smpt_Measurement_Stim_Current = ...,
+  Smpt_Measurement_Stim_Voltage = ...,
+  Smpt_Measurement_High_Voltage = ...,
+  Smpt_Measurement_Last_Item = ...
+} Smpt_Measurement;
+typedef enum 
+{
+  Smpt_Main_Status_Uninitialized = ...,
+  Smpt_Main_Status_Dm_Initialized = ...,
+  Smpt_Main_Status_Dm_Running = ...,
+  Smpt_Main_Status_Last_Item = ...
+} Smpt_Main_Status;
+typedef enum 
+{
+  Smpt_Stim_Status_Uninitialized = ...,
+  Smpt_Stim_Status_Ll_Initialized = ...,
+  Smpt_Stim_Status_Ml_Initialized = ...,
+  Smpt_Stim_Status_Ml_Running = ...,
+  Smpt_Stim_Status_Last_Item = ...
+} Smpt_Stim_Status;
+typedef struct 
+{
+  uint16_t time;
+  float current;
+  uint8_t interpolation_mode;
+} Smpt_point;
+typedef struct 
+{
+  uint8_t packet_number;
+  uint16_t command_number;
+  Smpt_Result result;
+} Smpt_ack;
+typedef struct 
+{
+  uint8_t packet_number;
+  uint16_t command_number;
+} Smpt_cmd;
+typedef struct 
+{
+  uint32_t acks_length;
+  uint32_t acks_current_index;
+  Smpt_ack acks[100];
+  uint32_t requests_current_index;
+  uint32_t requests_expected_index;
+  uint32_t number_of_expected;
+  Smpt_cmd requests[100];
+  uint32_t new_ack_available;
+} Smpt_cmd_list;
+typedef struct 
+{
+  uint8_t *buffer;
+  uint8_t *buffer_state;
+  uint32_t write_row_length_count;
+  uint32_t write_row_count;
+  uint32_t read_row_count;
+  _Bool ignore_next_byte;
+  uint32_t number_of_rows;
+  uint32_t row_length;
+} Packet_input_buffer;
+typedef struct 
+{
+  uint32_t packet_length;
+  uint8_t packet[1200];
+  Smpt_cmd_list cmd_list;
+  int serial_port_descriptor;
+  int8_t current_packet_number;
+  char serial_port_name[256];
+  Packet_input_buffer packet_input_buffer;
+  uint8_t packet_input_buffer_data[120000];
+  uint8_t packet_input_buffer_state[100];
+} Smpt_device;
+typedef struct 
+{
+  uint8_t major;
+  uint8_t minor;
+  uint8_t revision;
+} Smpt_version;
+typedef struct 
+{
+  Smpt_version fw_version;
+  Smpt_version smpt_version;
+} Smpt_uc_version;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_uc_version uc_version;
+} Smpt_get_version_ack;
+typedef enum 
+{
+  Smpt_Fw_Hash_Type_Uninitialized = ...,
+  Smpt_Fw_Hash_Type_Git = ...,
+  Smpt_Fw_Hash_Type_Elf_MD5 = ...,
+  Smpt_Fw_Hash_Type_Elf_Sha256 = ...,
+  Smpt_Fw_Hash_Type_Last_Item = ...
+} Smpt_Fw_Hash_Type;
+typedef enum 
+{
+  Smpt_Fw_Hash_State_Not_Valid = ...,
+  Smpt_Fw_Hash_State_Valid = ...,
+  Smpt_Fw_Hash_State_Last_Item = ...
+} Smpt_Fw_Hash_State_Type;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_uc_version uc_version;
+  uint32_t fw_hash;
+  Smpt_Fw_Hash_Type fw_hash_type;
+  Smpt_Fw_Hash_State_Type fw_hash_state;
+} Smpt_get_extended_version_ack;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  char device_id[10];
+} Smpt_get_device_id_ack;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  uint8_t battery_level;
+  uint16_t battery_voltage;
+} Smpt_get_battery_status_ack;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_Stim_Status stim_status;
+  Smpt_High_Voltage high_voltage_level;
+} Smpt_get_stim_status_ack;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_Main_Status main_status;
+} Smpt_get_main_status_ack;
+typedef enum 
+{
+  Smpt_Library_Version_Major = ...,
+  Smpt_Library_Version_Minor = ...,
+  Smpt_Library_Version_Revision = ...
+} Smpt_General;
+typedef enum 
+{
+  Smpt_Dl_Signal_Type_Unused = ...,
+  Smpt_Dl_Signal_Type_Unkown = ...,
+  Smpt_Dl_Signal_Type_BI = ...,
+  Smpt_Dl_Signal_Type_EMG1 = ...,
+  Smpt_Dl_Signal_Type_Op_Voltage = ...,
+  Smpt_Dl_Signal_Type_Test_Signal = ...,
+  Smpt_Dl_Signal_Type_Ground = ...,
+  Smpt_Dl_Signal_Type_Temperature = ...,
+  Smpt_Dl_Signal_Type_Internal_SC = ...,
+  Smpt_Dl_Signal_Type_EMG2 = ...,
+  Smpt_Dl_Signal_Type_Time = ...,
+  Smpt_Dl_Signal_Type_PushButton = ...,
+  Smpt_Dl_Signal_Type_Breathing = ...,
+  Smpt_Dl_Signal_Type_Last_Item = ...
+} Smpt_Dl_Signal_Type;
+typedef enum 
+{
+  Smpt_Dl_Dsp_Filter_off = ...,
+  Smpt_Dl_Dsp_Filter_001 = ...,
+  Smpt_Dl_Dsp_Filter_002 = ...,
+  Smpt_Dl_Dsp_Filter_003 = ...,
+  Smpt_Dl_Dsp_Filter_Last = ...
+} Smpt_Dl_Dsp_Filter;
+typedef enum 
+{
+  Smpt_Dl_Output_Sample_Freq_Invalid = ...,
+  Smpt_Dl_Output_Sample_Freq_32kSPS = ...,
+  Smpt_Dl_Output_Sample_Freq_16kSPS = ...,
+  Smpt_Dl_Output_Sample_Freq_8kSPS = ...,
+  Smpt_Dl_Output_Sample_Freq_4kSPS = ...,
+  Smpt_Dl_Output_Sample_Freq_2kSPS = ...,
+  Smpt_Dl_Output_Sample_Freq_1kSPS = ...,
+  Smpt_Dl_Output_Sample_Freq_500SPS = ...,
+  Smpt_Dl_Output_Sample_Freq_250SPS = ...,
+  Smpt_Dl_Output_Sample_Freq_Lowpower_Last_Item = ...
+} Smpt_Dl_Output_Sample_Freq;
+typedef enum 
+{
+  Smpt_Dl_Electrode_Status_Positive = ...,
+  Smpt_Dl_Electrode_Status_Negative = ...,
+  Smpt_Dl_Electrode_Status_Maximum_Valid = ...,
+  Smpt_Dl_Electrode_Status_Last_Item = ...
+} Smpt_Dl_Electrode_Status;
+typedef enum 
+{
+  Smpt_Dl_Get_Type_Battery_Status = ...,
+  Smpt_Dl_Get_Type_File_System_Status = ...,
+  Smpt_Dl_Get_Type_List_of_MMI = ...,
+  Smpt_Dl_Get_Type_Operation_Mode = ...,
+  Smpt_Dl_Get_Type_File_By_Name = ...,
+  Smpt_Dl_Get_Type_Device_Id = ...,
+  Smpt_Dl_Get_Type_Firmware_Version = ...,
+  Smpt_Dl_Get_Type_File_Info = ...,
+  Smpt_Dl_Get_Type_Last_Item = ...
+} Smpt_Dl_Get_Type;
+typedef enum 
+{
+  Smpt_Dl_Op_Mode_Undefined = ...,
+  Smpt_Dl_Op_Mode_Idle = ...,
+  Smpt_Dl_Op_Mode_Live_Measurement_Pre = ...,
+  Smpt_Dl_Op_Mode_Live_Measurement = ...,
+  Smpt_Dl_Op_Mode_Record_Pre = ...,
+  Smpt_Dl_Op_Mode_Record = ...,
+  Smpt_Dl_Op_Mode_Data_Transfer_Pre = ...,
+  Smpt_Dl_Op_Mode_Data_Transfer = ...,
+  Smpt_Dl_Op_Mode_Last_Item = ...
+} Smpt_Dl_Op_Mode;
+typedef struct 
+{
+  char file_name[128 + 1];
+  uint32_t file_size;
+  uint16_t file_checksum;
+} Smpt_dl_file_info;
+typedef struct 
+{
+  uint8_t tm_sec;
+  uint8_t tm_min;
+  uint8_t tm_hour;
+  uint8_t tm_mday;
+  uint8_t tm_mon;
+  uint16_t tm_year;
+  uint8_t tm_wday;
+  uint16_t tm_yday;
+  uint8_t tm_isdst;
+} Smpt_dl_tm;
+typedef struct 
+{
+  uint8_t id;
+  uint8_t config1;
+  uint8_t config2;
+  uint8_t config3;
+  uint8_t loff;
+  uint8_t ch1set;
+  uint8_t ch2set;
+  uint8_t ch3set;
+  uint8_t ch4set;
+  uint8_t ch5set;
+  uint8_t ch6set;
+  uint8_t ch7set;
+  uint8_t ch8set;
+  uint8_t rld_sensp;
+  uint8_t rld_sensn;
+  uint8_t loff_sensp;
+  uint8_t loff_sensn;
+  uint8_t loff_flip;
+  uint8_t loff_statp;
+  uint8_t loff_statn;
+  uint8_t gpio;
+  uint8_t pace;
+  uint8_t resp;
+  uint8_t config4;
+  uint8_t wct1;
+  uint8_t wct2;
+} Smpt_dl_ads129x;
+typedef enum 
+{
+  Smpt_Dl_Init_Sync_Signal_Undifined = ...,
+  Smpt_Dl_Init_Sync_Signal_Rect_Pulse_0_5V = ...,
+  Smpt_Dl_Init_Sync_Signal_Rect_Pulse_0_200mV = ...,
+  Smpt_Dl_Init_Sync_Signal_Sinus_0_200mV = ...,
+  Smpt_Dl_Init_Sync_Signal_Last_Item = ...
+} Smpt_Dl_Init_Sync_Signal;
+typedef enum 
+{
+  Smpt_Dl_Init_Ack_State_Undefined = ...,
+  Smpt_Dl_Init_Ack_State_Successfull = ...,
+  Smpt_Dl_Init_Ack_State_Error_Storage_Init = ...,
+  Smpt_Dl_Init_Ack_State_Error_Storage_Write = ...,
+  Smpt_Dl_Init_Ack_State_Error_Storage_Full = ...,
+  Smpt_Dl_Init_Ack_State_Warning_Battery_Level = ...,
+  Smpt_Dl_Init_Ack_State_Error_Ads129x_Register = ...,
+  Smpt_Dl_Init_Ack_State_Last = ...
+} Smpt_Dl_Init_Ack_State;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_dl_ads129x ads129x;
+  Smpt_dl_tm planned_start_time;
+  Smpt_dl_tm system_time;
+  char patient_name[128 + 1];
+  char patient_number[36 + 1];
+  char investigator_name[128 + 1];
+  Smpt_Dl_Signal_Type channel_type[8];
+  uint32_t duration_of_planned_m;
+  uint16_t number_of_channels;
+  _Bool live_data_mode_flag;
+  _Bool sd_storage_mode_flag;
+  _Bool timed_start_flag;
+  _Bool system_time_flag;
+  _Bool mute_flag;
+  Smpt_Dl_Init_Sync_Signal sync_signal;
+  Smpt_Dl_Dsp_Filter filter;
+} Smpt_dl_init;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_dl_ads129x ads129x;
+  char measurement_file_id[60 + 1];
+  Smpt_Dl_Init_Ack_State init_state;
+  Smpt_Dl_Output_Sample_Freq freq_out;
+} Smpt_dl_init_ack;
+typedef enum 
+{
+  Smpt_Dl_Send_File_By_Name_Mode_Undefined = ...,
+  Smpt_Dl_Send_File_By_Name_Mode_Multiblock = ...,
+  Smpt_Dl_Send_File_By_Name_Mode_Singleblock = ...
+} Smpt_Dl_Send_File_By_Name_Mode;
+typedef struct 
+{
+  uint64_t file_size;
+  uint32_t n_blocks;
+  char file_name[128 + 1];
+  uint32_t block_offset;
+  Smpt_Dl_Send_File_By_Name_Mode mode;
+} Smpt_dl_file_by_name;
+typedef struct 
+{
+  uint16_t n_measurements;
+} Smpt_dl_get_mmi;
+typedef enum 
+{
+  Smpt_Dl_EnergyState_CableConnected = ...,
+  Smpt_Dl_EnergyState_DeviceIsLoading = ...
+} Smpt_Dl_EnergyState;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Dl_Get_Type get_type;
+  Smpt_dl_file_by_name file_by_name;
+  Smpt_dl_get_mmi mmi;
+  Smpt_dl_file_info file_info;
+} Smpt_dl_get;
+typedef struct 
+{
+  uint32_t voltage;
+  int32_t current;
+  uint8_t percentage;
+  int8_t temperature;
+  uint8_t energystate;
+} Smpt_dl_battery_status;
+typedef struct 
+{
+  _Bool file_system_ready;
+  uint64_t used_size;
+  uint64_t free_size;
+} Smpt_dl_file_system_status;
+struct Smpt_dl_mmi_
+{
+  uint16_t measurement_number;
+  char measurement_id[60 + 1];
+  char patient_number[36 + 1];
+  uint64_t file_size;
+  Smpt_dl_tm planned_start_time;
+  Smpt_dl_tm start_time;
+  uint32_t time_length;
+};
+typedef struct Smpt_dl_mmi_ Smpt_dl_mmi;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_dl_mmi mmi;
+  Smpt_dl_init dl_init;
+} Smpt_dl_send_mmi;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_Dl_Get_Type get_type;
+  Smpt_Dl_Op_Mode operation_mode;
+  Smpt_dl_battery_status battery_status;
+  Smpt_dl_file_system_status file_system_status;
+  Smpt_dl_file_by_name file_by_name;
+  Smpt_dl_get_mmi mmi;
+  char deviceId[128 + 1];
+  char firmwareVersion[128 + 1];
+  Smpt_dl_file_info file_info;
+} Smpt_dl_get_ack;
+typedef struct 
+{
+  uint8_t packet_number;
+  uint32_t block_number;
+  uint16_t n_bytes_per_block;
+  uint8_t data[512];
+} Smpt_dl_send_file;
+typedef struct 
+{
+  float value;
+  Smpt_Dl_Signal_Type signal_type;
+  Smpt_Dl_Electrode_Status status;
+} Smpt_dl_electrode_sample;
+typedef struct 
+{
+  uint8_t packet_number;
+  uint8_t n_channels;
+  uint32_t time_offset;
+  Smpt_dl_electrode_sample electrode_samples[8];
+} Smpt_dl_send_live_data;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  uint32_t block_number;
+} Smpt_dl_send_file_ack;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+} Smpt_dl_start_ack;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  uint64_t time;
+} Smpt_dl_stop_ack;
+typedef struct 
+{
+  Smpt_Dl_Signal_Type signal_type;
+  uint32_t value;
+  uint8_t electrode_status;
+} Smpt_dl_channel_measurement;
+typedef enum 
+{
+  Smpt_Dl_Hardware_Module_Undefined = ...,
+  Smpt_Dl_Hardware_Module_Bluetooth = ...,
+  Smpt_Dl_Hardware_Module_Memory_Card = ...,
+  Smpt_Dl_Hardware_Module_Measurement = ...,
+  Smpt_Dl_Hardware_Module_Research = ...,
+  Smpt_Dl_Hardware_Module_Last = ...
+} Smpt_Dl_Hardware_Module;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Dl_Hardware_Module hardware_module;
+  _Bool switch_on_off;
+} Smpt_dl_power_module;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_Dl_Hardware_Module hardware_module;
+  _Bool switch_on_off;
+} Smpt_dl_power_module_ack;
+typedef enum 
+{
+  Smpt_Dl_Sys_Type_Undefined = ...,
+  Smpt_Dl_Sys_Type_Deletefile = ...,
+  Smpt_Dl_Sys_Type_Device_Sleep = ...,
+  Smpt_Dl_Sys_Type_Device_Storage = ...,
+  Smpt_Dl_Sys_Type_Device_Last_Item = ...
+} Smpt_Dl_Sys_Type;
+typedef enum 
+{
+  Smpt_Dl_Sys_State_Undefined = ...,
+  Smpt_Dl_Sys_State_Successful = ...,
+  Smpt_Dl_Sys_State_Last_Item = ...
+} Smpt_Dl_Sys_State;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_Dl_Sys_Type type;
+  char file_name[128 + 1];
+} Smpt_dl_sys;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_Dl_Sys_Type type;
+  char file_name[128 + 1];
+  Smpt_Dl_Sys_State state;
+} Smpt_dl_sys_ack;
+typedef enum 
+{
+  Smpt_Ll_Interpolation_Jump = ...,
+  Smpt_Ll_Interpolation_Linear = ...,
+  Smpt_Ll_Interpolation_Last_Item = ...
+} Smpt_Ll_Interpolation_Mode;
+typedef struct 
+{
+  Smpt_Measurement measurement_type;
+  Smpt_High_Voltage high_voltage_level;
+  uint8_t packet_number;
+} Smpt_ll_init;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+} Smpt_ll_init_ack;
+typedef Smpt_point Smpt_ll_point;
+typedef struct 
+{
+  _Bool enable_stimulation;
+  Smpt_Channel channel;
+  Smpt_Connector connector;
+  uint8_t number_of_points;
+  Smpt_ll_point points[16];
+  uint8_t packet_number;
+} Smpt_ll_channel_config;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_Channel channel;
+  Smpt_Connector connector;
+  Smpt_Measurement measurement_type;
+  uint16_t measurement_sampling_time_us;
+  uint16_t measurement[128];
+} Smpt_ll_channel_config_ack;
+typedef Smpt_ack Smpt_ll_ack;
+typedef struct 
+{
+  _Bool stop_all_channels_on_error;
+  uint8_t packet_number;
+} Smpt_ml_init;
+typedef Smpt_ack Smpt_ml_ack;
+typedef Smpt_point Smpt_ml_point;
+typedef struct 
+{
+  uint8_t ramp;
+  float period;
+  _Bool double_period_accuracy;
+  uint8_t number_of_points;
+  Smpt_ml_point points[16];
+} Smpt_ml_channel_config;
+typedef struct 
+{
+  _Bool enable_channel[8];
+  Smpt_ml_channel_config channel_config[8];
+  uint8_t packet_number;
+} Smpt_ml_update;
+typedef enum 
+{
+  Smpt_Ml_Data_Stimulation = ...,
+  Smpt_Ml_Data_Stimulation_Eight_Channels = ...,
+  Smpt_Ml_Data_Channels = ...
+} Smpt_Ml_Data;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Ml_Data data_selection;
+} Smpt_ml_get_current_data;
+typedef enum 
+{
+  Smpt_Ml_Stimulation_Stopped = ...,
+  Smpt_Ml_Stimulation_Running = ...,
+  Smpt_Ml_Stimulation_Last_Item = ...
+} Smpt_Ml_Stimulation_State;
+typedef enum 
+{
+  Smpt_Ml_Channel_State_Ok = ...,
+  Smpt_Ml_Channel_State_Electrode_Error = ...,
+  Smpt_Ml_Channel_State_Timeout_Error = ...,
+  Smpt_Ml_Channel_State_Low_Current_Error = ...,
+  Smpt_Ml_Channel_State_Last_Item = ...
+} Smpt_Ml_Channel_State;
+typedef struct 
+{
+  _Bool is_valid;
+  _Bool electrode_error[8];
+  Smpt_Ml_Stimulation_State stimulation_state;
+} Smpt_ml_stimulation_data;
+typedef struct 
+{
+  _Bool is_valid;
+  Smpt_Ml_Channel_State channel_state[8];
+  Smpt_Ml_Stimulation_State stimulation_state[8];
+} Smpt_ml_stimulation_channels_data;
+typedef struct 
+{
+  uint8_t packet_number;
+  Smpt_Result result;
+  Smpt_Ml_Data data_selection;
+  Smpt_ml_stimulation_data stimulation_data;
+  Smpt_ml_stimulation_channels_data channel_data;
+} Smpt_ml_get_current_data_ack;
+void smpt_clear_ack(Smpt_ack * const ack);
+void smpt_clear_get_battery_status_ack(Smpt_get_battery_status_ack * const get_battery_status_ack);
+void smpt_clear_get_device_id_ack(Smpt_get_device_id_ack * const get_device_id_ack);
+void smpt_clear_get_version_ack(Smpt_get_version_ack * const get_version_ack);
+void smpt_clear_get_extended_version_ack(Smpt_get_extended_version_ack * const get_extended_version_ack);
+void smpt_clear_get_stim_status_ack(Smpt_get_stim_status_ack * const get_stim_status_ack);
+void smpt_clear_get_main_status_ack(Smpt_get_main_status_ack * const get_main_status_ack);
+void smpt_clear_device(Smpt_device * const device);
+_Bool smpt_is_general(Smpt_Cmd cmd);
+_Bool smpt_is_low_level(Smpt_Cmd cmd);
+_Bool smpt_is_mid_level(Smpt_Cmd cmd);
+_Bool smpt_is_dyscom_level(Smpt_Cmd cmd);
+_Bool smpt_is_boot_level(Smpt_Cmd cmd);
+_Bool smpt_is_service_level(Smpt_Cmd cmd);
+void smpt_packet_number_generator_reset(Smpt_device * const device);
+uint8_t smpt_packet_number_generator_next(Smpt_device * const device);
+_Bool smpt_open_serial_port(Smpt_device * const device, const char * const device_name);
+_Bool smpt_close_serial_port(Smpt_device * const device);
+_Bool smpt_check_serial_port(const char * const device_name);
+_Bool smpt_new_packet_received(Smpt_device * const device);
+void smpt_last_ack(Smpt_device * const device, Smpt_ack * const ack);
+_Bool smpt_send_get_version_main(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_get_version_stim(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_get_extended_version(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_get_device_id(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_get_battery_status(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_reset(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_get_stim_status(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_get_main_status(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_get_get_version_main_ack(Smpt_device * const device, Smpt_get_version_ack * const get_version_ack);
+_Bool smpt_get_get_version_stim_ack(Smpt_device * const device, Smpt_get_version_ack * const get_version_ack);
+_Bool smpt_get_get_extended_version_ack(Smpt_device * const device, Smpt_get_extended_version_ack * const get_extended_version_ack);
+_Bool smpt_get_get_device_id_ack(Smpt_device * const device, Smpt_get_device_id_ack * const get_device_id_ack);
+_Bool smpt_get_get_battery_status_ack(Smpt_device * const device, Smpt_get_battery_status_ack * const get_battery_status_ack);
+_Bool smpt_get_get_stim_status_ack(Smpt_device * const device, Smpt_get_stim_status_ack * const get_stim_status_ack);
+_Bool smpt_get_get_main_status_ack(Smpt_device * const device, Smpt_get_main_status_ack * const get_main_status_ack);
+Smpt_version smpt_library_version(void);
+int smpt_dl_compare_int(int a, int b);
+int smpt_dl_compare_tm(const Smpt_dl_tm *a, const Smpt_dl_tm *b);
+_Bool smpt_dl_tm_is_null(Smpt_dl_tm *tm);
+void smpt_clear_dl_tm(Smpt_dl_tm * const dl_tm);
+void smpt_copy_dl_ads129x(Smpt_dl_ads129x * const target, const Smpt_dl_ads129x * const source);
+void smpt_clear_dl_ads129x(Smpt_dl_ads129x * const dl_ads129x);
+void smpt_clear_dl_init(Smpt_dl_init * const dl_init);
+void smpt_clear_dl_patient_name(char * const patient_name);
+void smpt_clear_dl_investigator_name(char * const investigator_name);
+void smpt_clear_dl_patient_number(char * const patient_number);
+void smpt_clear_dl_string(char * const string, uint16_t str_length);
+void smpt_clear_dl_init_ack(Smpt_dl_init_ack * const dl_init_ack);
+void smpt_clear_dl_get(Smpt_dl_get * const dl_get);
+void smpt_clear_dl_mmi(Smpt_dl_mmi * const dl_mmi);
+void smpt_clear_dl_send_mmi(Smpt_dl_send_mmi * const dl_send_mmi);
+void smpt_clear_dl_measurement_id(char file_id[60 + 1]);
+void smpt_clear_dl_get_ack(Smpt_dl_get_ack * const dl_get_ack);
+void smpt_clear_dl_send_file(Smpt_dl_send_file * const dl_send_file);
+void smpt_clear_dl_send_live_data(Smpt_dl_send_live_data * const dl_send_live_data);
+void smpt_clear_dl_electrode_samples(Smpt_dl_electrode_sample electrode_samples[8]);
+void smpt_clear_dl_start_ack(Smpt_dl_start_ack * const dl_start_ack);
+void smpt_clear_dl_stop_ack(Smpt_dl_stop_ack * const dl_stop_ack);
+void smpt_clear_dl_power_module(Smpt_dl_power_module *dl_power_module);
+void smpt_clear_dl_power_module_ack(Smpt_dl_power_module_ack *dl_power_module_ack);
+void smpt_clear_dl_send_file_ack(Smpt_dl_send_file_ack * const dl_send_file_ack);
+void smpt_clear_dl_sys(Smpt_dl_sys * const dl_sys);
+void smpt_clear_dl_sys_ack(Smpt_dl_sys_ack * const dl_sys_ack);
+_Bool smpt_is_valid_dl_init(const Smpt_dl_init * const dl_init);
+_Bool smpt_is_valid_dl_init_ack(const Smpt_dl_init_ack * const dl_init_ack);
+_Bool smpt_is_valid_dl_power_module_ack(const Smpt_dl_power_module_ack * const dl_pwer_module_ack);
+_Bool smpt_is_valid_dl_start_ack(const Smpt_dl_start_ack * const dl_start_ack);
+_Bool smpt_is_valid_dl_send_mmi(const Smpt_dl_send_mmi * const dl_send_mmi);
+_Bool smpt_is_valid_dl_stop_ack(const Smpt_dl_stop_ack * const dl_stop_ack);
+_Bool smpt_is_valid_dl_get(const Smpt_dl_get * const dl_get);
+_Bool smpt_is_valid_dl_power_module(const Smpt_dl_power_module * const dl_power_module);
+_Bool smpt_is_valid_dl_get_ack(const Smpt_dl_get_ack * const dl_get_ack);
+_Bool smpt_is_valid_dl_send_file(const Smpt_dl_send_file * const dl_send_file);
+_Bool smpt_is_valid_dl_send_live_data(const Smpt_dl_send_live_data * const live_data);
+_Bool smpt_is_valid_dl_sys(const Smpt_dl_sys * const dl_sys);
+_Bool smpt_is_valid_dl_sys_ack(const Smpt_dl_sys_ack * const dl_sys_ack);
+_Bool smpt_send_dl_init(Smpt_device * const device, const Smpt_dl_init * const dl_init);
+_Bool smpt_send_dl_start(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_dl_stop(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_send_dl_get(Smpt_device * const device, const Smpt_dl_get * const dl_get);
+_Bool smpt_get_dl_init_ack(Smpt_device * const device, Smpt_dl_init_ack * const dl_init_ack);
+_Bool smpt_get_dl_power_module_ack(Smpt_device * const device, Smpt_dl_power_module_ack * const dl_power_module_ack);
+_Bool smpt_get_dl_stop_ack(Smpt_device * const device, Smpt_dl_stop_ack * const dl_stop_ack);
+_Bool smpt_get_dl_get_ack(Smpt_device * const device, Smpt_dl_get_ack * const dl_get_ack);
+_Bool smpt_get_dl_send_live_data(Smpt_device * const device, Smpt_dl_send_live_data * const dl_send_live_data);
+_Bool smpt_get_dl_send_file(Smpt_device * const device, Smpt_dl_send_file * const dl_send_file);
+_Bool smpt_get_dl_send_mmi(Smpt_device * const device, Smpt_dl_send_mmi * const dl_send_mmi);
+_Bool smpt_send_dl_power_module(Smpt_device * const device, const Smpt_dl_power_module * const dl_power_module);
+_Bool smpt_send_dl_send_file_ack(Smpt_device * const device, const Smpt_dl_send_file_ack * const dl_send_file_ack);
+_Bool smpt_send_dl_sys(Smpt_device * const device, const Smpt_dl_sys * const dl_sys);
+_Bool smpt_get_dl_sys_ack(Smpt_device * const device, Smpt_dl_sys_ack * const dl_sys_ack);
+void smpt_clear_ll_init(Smpt_ll_init * const ll_init);
+void smpt_clear_ll_init_ack(Smpt_ll_init_ack * const ll_init_ack);
+void smpt_clear_ll_channel_config(Smpt_ll_channel_config * const ll_channel_config);
+void smpt_clear_ll_channel_config_ack(Smpt_ll_channel_config_ack * const ll_channel_config_ack);
+void smpt_clear_ll_ack(Smpt_ll_ack * const ll_ack);
+void smpt_clear_ll_point(Smpt_ll_point * const ll_point);
+void smpt_init_error_callback(void (*error_function)(const char *format));
+void smpt_error(const char *format, ...);
+void smpt_debug(const char *format, ...);
+void smpt_print_array(const uint8_t array[], uint32_t array_length);
+_Bool smpt_is_valid_ll_init(const Smpt_ll_init * const ll_init);
+_Bool smpt_is_valid_ll_init_ack(const Smpt_ll_init_ack * const ll_init_ack);
+_Bool smpt_is_valid_ll_channel_config(const Smpt_ll_channel_config * const ll_channel_config);
+_Bool smpt_is_valid_ll_channel_config_ack(const Smpt_ll_channel_config_ack * const ll_channel_config_ack);
+_Bool smpt_is_valid_point(const Smpt_ll_point * const ll_point, uint8_t index);
+_Bool smpt_send_ll_init(Smpt_device * const device, const Smpt_ll_init * const ll_init);
+_Bool smpt_send_ll_channel_config(Smpt_device * const device, const Smpt_ll_channel_config * const ll_channel_config);
+_Bool smpt_send_ll_stop(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_get_ll_init_ack(const Smpt_device * const device, Smpt_ll_init_ack * const ll_init_ack);
+_Bool smpt_get_ll_channel_config_ack(const Smpt_device * const device, Smpt_ll_channel_config_ack * const ll_channel_config_ack);
+void smpt_clear_ml_init(Smpt_ml_init * const ml_init);
+void smpt_clear_ml_update(Smpt_ml_update * const ml_update);
+void smpt_clear_ml_get_current_data(Smpt_ml_get_current_data * const ml_get_current_data);
+void smpt_clear_ml_get_current_data_ack(Smpt_ml_get_current_data_ack * const ml_get_current_data_ack);
+void smpt_clear_ml_ack(Smpt_ml_ack * const ml_ack);
+_Bool smpt_is_valid_ml_init(const Smpt_ml_init * const ml_init);
+_Bool smpt_is_valid_ml_update(const Smpt_ml_update * const ml_update);
+_Bool smpt_is_valid_ml_get_current_data(const Smpt_ml_get_current_data * const ml_get_current_data);
+_Bool smpt_is_valid_ml_get_current_data_ack(const Smpt_ml_get_current_data_ack * const ml_get_current_data_ack);
+_Bool smpt_send_ml_init(Smpt_device * const device, const Smpt_ml_init * const ml_init);
+_Bool smpt_send_ml_update(Smpt_device * const device, const Smpt_ml_update * const ml_update);
+_Bool smpt_send_ml_get_current_data(Smpt_device * const device, const Smpt_ml_get_current_data * const ml_get_current_data);
+_Bool smpt_send_ml_stop(Smpt_device * const device, uint8_t packet_number);
+_Bool smpt_get_ml_get_current_data_ack(Smpt_device * const device, Smpt_ml_get_current_data_ack * const ml_get_current_data_ack);

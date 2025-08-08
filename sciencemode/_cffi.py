@@ -119,7 +119,7 @@ else:
 # These definitions help parse the header files correctly by:
 # 1. Setting the appropriate platform macros based on the current system
 # 2. Defining away GCC-specific extensions that pycparser can't handle
-# 3. Setting up include paths for both real headers and fake headers (for standard includes)
+# 3. Setting up include paths for both real headers and fake headers
 DEFINE_ARGS = [
     # Platform definitions - set according to current platform
     # but make sure to handle platform-specific fields in structures
@@ -343,20 +343,18 @@ def load_library():
                     # Check if we're on Windows to safely use windll
                     if sys.platform.startswith("win"):
                         try:
-                            # First make sure windll is available
-                            if hasattr(ctypes, "windll"):
-                                # Get kernel32 if available
-                                if hasattr(ctypes.windll, "kernel32"):
-                                    # Get the last error code if GetLastError is available
-                                    if hasattr(ctypes.windll.kernel32, "GetLastError"):
-                                        error_code = (
-                                            ctypes.windll.kernel32.GetLastError()
-                                        )
+                            # Try to get Windows error details
+                            windll_attr = getattr(ctypes, "windll", None)
+                            if windll_attr:
+                                kernel32 = getattr(windll_attr, "kernel32", None)
+                                if kernel32:
+                                    get_error = getattr(kernel32, "GetLastError", None)
+                                    if get_error:
+                                        error_code = get_error()
                                         print(f"Windows error code: {error_code}")
 
-                                        # Try to get a formatted message if possible
+                                        # Try to format the error message
                                         try:
-                                            # Format message flags and parameters
                                             FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
                                             FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
 
@@ -367,40 +365,38 @@ def load_library():
                                             )
 
                                             # Get the error message
-                                            ctypes.windll.kernel32.FormatMessageA(
-                                                FORMAT_MESSAGE_FROM_SYSTEM
-                                                | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                                None,
-                                                error_code,
-                                                0,
-                                                buffer,
-                                                buffer_size,
-                                                None,
+                                            format_msg = getattr(
+                                                kernel32, "FormatMessageA", None
                                             )
+                                            if format_msg:
+                                                format_msg(
+                                                    FORMAT_MESSAGE_FROM_SYSTEM
+                                                    | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                                    None,
+                                                    error_code,
+                                                    0,
+                                                    buffer,
+                                                    buffer_size,
+                                                    None,
+                                                )
 
-                                            # Convert the message to a Python string
-                                            message = buffer.value.decode(
-                                                "utf-8", errors="replace"
-                                            ).strip()
-                                            print(f"Windows error message: {message}")
+                                                # Convert message to Python string
+                                                message = buffer.value.decode(
+                                                    "utf-8", errors="replace"
+                                                ).strip()
+                                                print(f"Windows error: {message}")
                                         except Exception as msg_err:
-                                            print(
-                                                f"Error getting formatted error message: {msg_err}"
-                                            )
+                                            print(f"Error formatting: {msg_err}")
                                     else:
-                                        print(
-                                            "GetLastError function not available in kernel32"
-                                        )
+                                        print("GetLastError not available")
                                 else:
-                                    print("kernel32 not available in windll")
+                                    print("kernel32 not available")
                             else:
-                                print("windll not available in ctypes")
-                        except AttributeError:
-                            print(
-                                "Could not access Windows-specific ctypes functionality"
-                            )
+                                print("windll not available")
+                        except Exception:
+                            print("Error accessing Windows functionality")
                     else:
-                        print("Not on Windows, skipping windll usage")
+                        print("Not on Windows, skipping error handling")
                 except Exception as win_err:
                     print(f"Error getting Windows error details: {win_err}")
             else:
@@ -416,6 +412,48 @@ def load_library():
     return None
 
 
+# Determine appropriate linker flags and library settings based on platform
+extra_compile_args = ["-DSMPT_STATIC"]
+libraries = ["smpt"]  # Default library name without lib prefix
+
+# Windows-specific configuration
+if platform.system() == "Windows":
+    # Check if we have the static library available
+    static_lib_path = os.path.join(smpt_lib_path, "smpt.lib")
+    if not os.path.exists(static_lib_path):
+        static_lib_path = os.path.join(smpt_lib_path, "libsmpt.lib")
+
+    # If we have a static lib, use it directly
+    if os.path.exists(static_lib_path):
+        print(f"Using static library: {static_lib_path}")
+        # On Windows with static library, we need special linking configuration
+        extra_link_args = ["/WHOLEARCHIVE:smpt"]
+
+        # Use the library in its directory
+        library_dirs = [smpt_lib_path]
+    else:
+        # If no static library, look for DLL
+        dll_path = os.path.join(smpt_lib_path, "smpt.dll")
+        if not os.path.exists(dll_path):
+            dll_path = os.path.join(smpt_lib_path, "libsmpt.dll")
+
+        if os.path.exists(dll_path):
+            print(f"Using DLL: {dll_path}")
+            # For DLL, we don't need special flags
+            extra_link_args = []
+            library_dirs = [smpt_lib_path]
+        else:
+            # Fallback if neither is found
+            print("Warning: Could not find static library or DLL.")
+            print("Attempting to use default library search path.")
+            extra_link_args = []
+            library_dirs = [smpt_lib_path]
+else:
+    # Unix-like systems (Linux/macOS)
+    extra_link_args = []
+    library_dirs = [smpt_lib_path]
+
+# Call set_source with the appropriate configuration
 ffi.set_source(
     "sciencemode._sciencemode",
     ("\n").join([f'#include "{header}"' for header in ROOT_HEADERS]),
@@ -426,12 +464,10 @@ ffi.set_source(
         smpt_include_path3,
         smpt_include_path4,
     ],
-    libraries=["smpt"],  # Library name without lib prefix
-    library_dirs=[smpt_lib_path],  # Using the absolute path variable
-    # Use static linking for all platforms
-    extra_compile_args=["-DSMPT_STATIC"],
-    # Modify linking flags to avoid static linking issues
-    extra_link_args=[] if platform.system() != "Windows" else ["/WHOLEARCHIVE:smpt"],
+    libraries=libraries,
+    library_dirs=library_dirs,
+    extra_compile_args=extra_compile_args,
+    extra_link_args=extra_link_args,
     # Use py_limited_api to avoid symbol name issues when using static linking
     py_limited_api=False,
 )
@@ -493,7 +529,50 @@ elif "serial_port_descriptor" in cdef and sys.platform.startswith("win"):
     )
 
 
-ffi.cdef(cdef)
+# Add explicit verification for enums that might be used in struct fields
+# This is needed because CFFI tries to infer the size of enums and may fail
+# Defining these explicitly helps CFFI understand struct layouts correctly
+verification_code = """
+typedef enum {
+    Smpt_Result_Successful = 0,
+    Smpt_Result_Transfer_Error = 1,
+    Smpt_Result_Parameter_Error = 2,
+    Smpt_Result_Protocol_Error = 3,
+    Smpt_Result_Uc_Stim_Timeout_Error = 4,
+    Smpt_Result_Emg_Timeout_Error = 5,
+    Smpt_Result_Emg_Register_Error = 6,
+    Smpt_Result_Not_Initialized_Error = 7,
+    Smpt_Result_Hv_Error = 8,
+    Smpt_Result_Demux_Timeout_Error = 9,
+    Smpt_Result_Electrode_Error = 10,
+    Smpt_Result_Invalid_Cmd_Error = 11,
+    Smpt_Result_Demux_Parameter_Error = 12,
+    Smpt_Result_Demux_Not_Initialized_Error = 13,
+    Smpt_Result_Demux_Transfer_Error = 14,
+    Smpt_Result_Demux_Unknown_Ack_Error = 15,
+    Smpt_Result_Pulse_Timeout_Error = 16,
+    Smpt_Result_Fuel_Gauge_Error = 17,
+    Smpt_Result_Live_Signal_Error = 18,
+    Smpt_Result_File_Transmission_Timeout = 19,
+    Smpt_Result_File_Not_Found = 20,
+    Smpt_Result_Busy = 21,
+    Smpt_Result_File_Error = 22,
+    Smpt_Result_Flash_Erase_Error = 23,
+    Smpt_Result_Flash_Write_Error = 24,
+    Smpt_Result_Unknown_Controller_Error = 25,
+    Smpt_Result_Firmware_Too_Large_Error = 26,
+    Smpt_Result_Fuel_Gauge_Not_Programmed = 27,
+    Smpt_Result_Pulse_Low_Current_Error = 28,
+    Smpt_Result_Last_Item = 29
+} Smpt_Result;
+"""
+
+# Add the verification code to the beginning of our CFFI definitions
+cdef = verification_code + cdef
+
+# Define the CFFI interface with the combined definitions
+# Use override=True to handle duplicate definitions (especially for Smpt_Result)
+ffi.cdef(cdef, override=True)
 
 
 # Create a context manager class for managing CFFI resources

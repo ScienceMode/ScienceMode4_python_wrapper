@@ -22,7 +22,7 @@ from_c_array = None
 
 try:
     # First try to import the compiled CFFI module
-    from sciencemode._sciencemode import lib, ffi
+    from sciencemode._sciencemode import ffi, lib
 
     # Also try to import our enhanced CFFI utilities
     try:
@@ -52,9 +52,6 @@ try:
 except ImportError:
     # Will be handled later in the file
     print("Failed to import compiled CFFI module _sciencemode")
-
-except ImportError:
-    # Will be handled later in the file
     lib = None
     ffi = None
     _have_cffi_utils = False
@@ -79,7 +76,7 @@ else:
         Automatically releases the resource when exiting the context.
 
         Args:
-            create_fn: Function to create the cdata object (like ffi.new, ffi.from_buffer)
+            create_fn: Function to create the cdata object
             *args, **kwargs: Arguments to pass to the create function
 
         Yields:
@@ -298,7 +295,7 @@ def find_library():
                                     win_error = ffi.getwinerror()
                                     print(f"CFFI error loading {name} from {path}: {e}")
                                     print(
-                                        f"Windows error code: {win_error[0]}, message: {win_error[1]}"
+                                        f"Windows error: {win_error[0]}, {win_error[1]}"
                                     )
                                 else:
                                     print(f"CFFI error loading {name} from {path}: {e}")
@@ -310,7 +307,7 @@ def find_library():
                                 if hasattr(ffi, "errno"):
                                     errno_val = ffi.errno
                                     print(
-                                        f"CFFI error loading {name} from {path}: {e}, errno: {errno_val}"
+                                        f"CFFI error: {name} from {path}, errno: {errno_val}"
                                     )
                                 else:
                                     print(f"CFFI error loading {name} from {path}: {e}")
@@ -345,9 +342,7 @@ def find_library():
                             if hasattr(ffi, "getwinerror"):
                                 win_error = ffi.getwinerror()
                                 print(f"Error loading {name} from {path}: {e}")
-                                print(
-                                    f"Windows error code: {win_error[0]}, message: {win_error[1]}"
-                                )
+                                print(f"Windows error: {win_error[0]}, {win_error[1]}")
                             else:
                                 print(f"Error loading {name} from {path}: {e}")
                         except Exception:
@@ -357,9 +352,7 @@ def find_library():
                         try:
                             if hasattr(ffi, "errno"):
                                 errno_val = ffi.errno
-                                print(
-                                    f"Error loading {name} from {path}: {e}, errno: {errno_val}"
-                                )
+                                print(f"Error loading: {name}, errno: {errno_val}")
                             else:
                                 print(f"Error loading {name} from {path}: {e}")
                         except Exception:
@@ -451,7 +444,7 @@ try:
                 # Fallback to direct rebuild
                 rebuild_cffi_module()
         else:
-            # Fallback to direct rebuild if ffi isn't available or doesn't have init_once
+            # Fallback to direct rebuild if ffi lacks init_once
             rebuild_cffi_module()
     else:
         print("Skipping CFFI module rebuild on Windows platform")
@@ -550,7 +543,7 @@ try:
 
         # On Windows, we don't want to re-raise to allow wheel building to succeed
         if not sys.platform.startswith("win"):
-            # Re-raise to ensure the import failure is propagated on non-Windows platforms
+            # Re-raise to propagate import failure on non-Windows
             raise
         else:
             if sys.platform.startswith("win"):
