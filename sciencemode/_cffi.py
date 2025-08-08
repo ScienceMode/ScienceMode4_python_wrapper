@@ -35,9 +35,13 @@ DEFINE_BLACKLIST = {
     "main",
 }
 
+# Get the directory where this _cffi.py file is located (package directory)
+package_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Try to find the include directory in different locations
-# We check multiple possible locations to support different installation structures
+# Check installed package directory first, then development locations
 devel_root_candidates = [
+    os.path.join(package_dir, "include"),  # Bundled in package directory (installed)
     os.path.abspath(
         "./smpt/ScienceMode_Library/include"
     ),  # Standard source tree layout
@@ -66,18 +70,17 @@ else:
     print(f"Found ScienceMode include directory: {include_dir}")
 
 # Define library path and check if it exists
-smpt_lib_path = os.path.abspath("./lib")
+# First check package directory (installed), then development directory
+package_dir = os.path.dirname(os.path.abspath(__file__))
+smpt_lib_paths = [
+    package_dir,  # Bundled in package directory (installed)
+    os.path.abspath("./lib"),  # Development directory
+]
 
-# Create lib directory if it doesn't exist
-if not os.path.exists(smpt_lib_path):
-    try:
-        print(f"Creating lib directory: {smpt_lib_path}")
-        os.makedirs(smpt_lib_path, exist_ok=True)
-    except Exception as e:
-        print(f"Warning: Could not create lib directory: {e}")
-
-# Check for SMPT library existence
+# Find the first directory that contains library files
+smpt_lib_path = os.path.abspath("./lib")  # Default fallback
 lib_found = False
+
 if platform.system() == "Windows":
     # Prefer static libraries (.lib) for wheel distribution
     lib_patterns = ["smpt.lib", "libsmpt.lib", "smpt.dll", "libsmpt.dll"]
@@ -88,10 +91,31 @@ else:
     # Prefer static libraries (.a) for wheel distribution
     lib_patterns = ["libsmpt.a", "libsmpt.so"]
 
-for pattern in lib_patterns:
-    if glob.glob(os.path.join(smpt_lib_path, pattern)):
-        lib_found = True
+# Check each possible library path
+for lib_path in smpt_lib_paths:
+    for pattern in lib_patterns:
+        if glob.glob(os.path.join(lib_path, pattern)):
+            smpt_lib_path = lib_path
+            lib_found = True
+            break
+    if lib_found:
         break
+
+# If no library found, fall back to creating ./lib directory (development mode)
+if not lib_found:
+    # Create lib directory if it doesn't exist
+    if not os.path.exists(smpt_lib_path):
+        try:
+            print(f"Creating lib directory: {smpt_lib_path}")
+            os.makedirs(smpt_lib_path, exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create lib directory: {e}")
+
+    # Check for SMPT library existence in the created directory
+    for pattern in lib_patterns:
+        if glob.glob(os.path.join(smpt_lib_path, pattern)):
+            lib_found = True
+            break
 
 if not lib_found:
     print("*" * 80)
@@ -99,6 +123,8 @@ if not lib_found:
     print("Ensure that 'pip install -e .' completed successfully.")
     print("The setup.py script should build the SMPT library using CMake.")
     print("*" * 80)
+else:
+    print(f"Found SMPT library in: {smpt_lib_path}")
 
 # Set the include paths based on the directory structure
 if os.path.exists(os.path.join(include_dir, "general")):

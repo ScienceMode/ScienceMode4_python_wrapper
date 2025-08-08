@@ -299,7 +299,18 @@ class BuildLibraryCommand(Command):
 
 
 # Package data setup
-package_data = {"sciencemode": ["*.dll", "*.so", "*.so.*", "*.dylib", "*.a", "*.lib"]}
+# Package data setup - include headers and libraries
+package_data = {
+    "sciencemode": [
+        "*.dll",
+        "*.so",
+        "*.so.*",
+        "*.dylib",
+        "*.a",
+        "*.lib",  # Libraries
+        "include/**/*.h",  # Headers (recursive)
+    ]
+}
 
 
 def create_symlinks(directory, source, targets):
@@ -402,14 +413,68 @@ def copy_libs_to_package():
                 create_symlinks(sciencemode_dir, "libsmpt.so.4", ["libsmpt.so"])
 
 
+def copy_headers_to_package():
+    """Copy SMPT headers from smpt/ScienceMode_Library/include/ to include/."""
+    include_source_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "smpt",
+        "ScienceMode_Library",
+        "include",
+    )
+    include_dest_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "sciencemode", "include"
+    )
+
+    if os.path.exists(include_source_dir):
+        print(f"Copying headers from {include_source_dir} to {include_dest_dir}")
+
+        # Remove existing include directory if it exists
+        if os.path.exists(include_dest_dir):
+            shutil.rmtree(include_dest_dir)
+
+        # Copy the entire include directory tree
+        shutil.copytree(include_source_dir, include_dest_dir)
+
+        # Count copied files
+        copied_count = 0
+        for _root, _dirs, files in os.walk(include_dest_dir):
+            for file in files:
+                if file.endswith(".h"):
+                    copied_count += 1
+
+        print(f"Copied {copied_count} header files to sciencemode/include/")
+    else:
+        print(f"Warning: Header source directory {include_source_dir} not found")
+        print("Headers will not be bundled in the wheel")
+
+
 # Try to copy libraries if they exist
 try:
     copy_libs_to_package()
 except Exception as e:
     print(f"Warning: Could not copy libraries to package: {e}")
 
+# Try to copy headers if they exist
+try:
+    copy_headers_to_package()
+except Exception as e:
+    print(f"Warning: Could not copy headers to package: {e}")
 
-# Check for CFFI prerequisites
+
+# Package data setup - include headers and libraries
+package_data = {
+    "sciencemode": [
+        "*.dll",
+        "*.so",
+        "*.so.*",
+        "*.dylib",
+        "*.a",
+        "*.lib",  # Libraries
+        "include/**/*.h",  # Headers (recursive)
+    ]
+}
+
+
 def check_cffi_prerequisites():
     """Check that all required CFFI files exist and libraries can be found."""
     cffi_path = os.path.join("sciencemode", "_cffi.py")
