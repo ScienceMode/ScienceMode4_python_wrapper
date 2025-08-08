@@ -146,6 +146,7 @@ else:
 # 1. Setting the appropriate platform macros based on the current system
 # 2. Defining away GCC-specific extensions that pycparser can't handle
 # 3. Setting up include paths for both real headers and fake headers
+# 4. MOST IMPORTANTLY: Ensuring consistent type mapping for _Bool/bool during both parsing AND compilation
 DEFINE_ARGS = (
     [
         # Platform definitions - set according to current platform
@@ -182,10 +183,15 @@ DEFINE_ARGS = (
         if sys.platform.startswith("win")
         else [
             "-U_MSC_VER",
+            # CRITICAL: Define _Bool and bool consistently for BOTH parsing and compilation
+            # This ensures that when CFFI compiles the C extension, it sees the same
+            # type definitions that we used during parsing
             "-D_Bool=unsigned char",
             "-Dbool=unsigned char",
             "-Dtrue=1",
             "-Dfalse=0",
+            # Override stdbool.h to prevent inconsistencies
+            "-D__bool_true_false_are_defined=1",
         ]
     )
     + [
@@ -460,6 +466,20 @@ def load_library():  # noqa: C901
 
 # Determine appropriate linker flags and library settings based on platform
 extra_compile_args = ["-DSMPT_STATIC"]
+
+# Add the same type definitions to compile args as we use for parsing
+# This ensures consistency between parsing and compilation
+if not platform.system().startswith("win"):
+    extra_compile_args.extend(
+        [
+            "-D_Bool=unsigned char",
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
+            "-D__bool_true_false_are_defined=1",
+        ]
+    )
+
 libraries = ["smpt"]  # Default library name without lib prefix
 
 # Windows-specific configuration
