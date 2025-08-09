@@ -504,44 +504,96 @@ else:
         ]
     )
 
-libraries = ["smpt"]  # Default library name without lib prefix
 
-# Windows-specific configuration
-if platform.system() == "Windows":
-    # Check if we have the static library available
-    static_lib_path = os.path.join(smpt_lib_path, "smpt.lib")
-    if not os.path.exists(static_lib_path):
-        static_lib_path = os.path.join(smpt_lib_path, "libsmpt.lib")
-
-    # If we have a static lib, use it directly
-    if os.path.exists(static_lib_path):
-        print(f"Using static library: {static_lib_path}")
-        # On Windows with static library, we need special linking configuration
-        extra_link_args = ["/WHOLEARCHIVE:smpt"]
-
-        # Use the library in its directory
-        library_dirs = [smpt_lib_path]
-    else:
-        # If no static library, look for DLL
-        dll_path = os.path.join(smpt_lib_path, "smpt.dll")
-        if not os.path.exists(dll_path):
-            dll_path = os.path.join(smpt_lib_path, "libsmpt.dll")
-
-        if os.path.exists(dll_path):
-            print(f"Using DLL: {dll_path}")
-            # For DLL, we don't need special flags
-            extra_link_args = []
-            library_dirs = [smpt_lib_path]
-        else:
-            # Fallback if neither is found
-            print("Warning: Could not find static library or DLL.")
-            print("Attempting to use default library search path.")
-            extra_link_args = []
-            library_dirs = [smpt_lib_path]
-else:
-    # Unix-like systems (Linux/macOS)
+# Platform-specific library and linking configuration
+def setup_platform_linking():
+    """Setup platform-specific library linking configuration."""
+    libraries = ["smpt"]  # Default library name without lib prefix
     extra_link_args = []
     library_dirs = [smpt_lib_path]
+
+    if platform.system() == "Windows":
+        # Windows-specific library detection and configuration
+        static_lib_candidates = ["smpt.lib", "libsmpt.lib", "smpt_static.lib"]
+        dll_candidates = ["smpt.dll", "libsmpt.dll"]
+
+        # Look for static library first
+        static_lib_path = None
+        for candidate in static_lib_candidates:
+            candidate_path = os.path.join(smpt_lib_path, candidate)
+            if os.path.exists(candidate_path):
+                static_lib_path = candidate_path
+                break
+
+        if static_lib_path:
+            print(f"Using static library: {static_lib_path}")
+            # For static linking on Windows, we may need special flags
+            extra_link_args = ["/WHOLEARCHIVE:smpt"]
+        else:
+            # Look for DLL
+            dll_path = None
+            for candidate in dll_candidates:
+                candidate_path = os.path.join(smpt_lib_path, candidate)
+                if os.path.exists(candidate_path):
+                    dll_path = candidate_path
+                    break
+
+            if dll_path:
+                print(f"Using DLL: {dll_path}")
+                extra_link_args = []
+            else:
+                print("Warning: Could not find static library or DLL on Windows.")
+                print("Attempting to use default library search path.")
+                extra_link_args = []
+
+    elif platform.system() == "Darwin":
+        # macOS-specific library detection
+        dylib_candidates = ["libsmpt.dylib", "libsmpt.so"]
+        static_candidates = ["libsmpt.a"]
+
+        # Prefer dynamic libraries on macOS
+        found_lib = False
+        for candidate in dylib_candidates + static_candidates:
+            candidate_path = os.path.join(smpt_lib_path, candidate)
+            if os.path.exists(candidate_path):
+                print(f"Using macOS library: {candidate_path}")
+                found_lib = True
+                break
+
+        if not found_lib:
+            print("Warning: Could not find suitable library on macOS.")
+            print("Attempting to use default library search path.")
+
+        # macOS may need specific flags for proper linking
+        extra_link_args = []
+        # Add any macOS-specific linker flags if needed
+        # extra_link_args.extend(["-Wl,-rpath,@loader_path"])
+
+    else:
+        # Linux and other Unix-like systems
+        so_candidates = ["libsmpt.so", "libsmpt.so.4", "libsmpt.so.4.0.0"]
+        static_candidates = ["libsmpt.a"]
+
+        # Prefer shared libraries on Linux
+        found_lib = False
+        for candidate in so_candidates + static_candidates:
+            candidate_path = os.path.join(smpt_lib_path, candidate)
+            if os.path.exists(candidate_path):
+                print(f"Using Linux library: {candidate_path}")
+                found_lib = True
+                break
+
+        if not found_lib:
+            print("Warning: Could not find suitable library on Linux.")
+            print("Attempting to use default library search path.")
+
+        extra_link_args = []
+
+    return libraries, library_dirs, extra_link_args
+
+
+# Setup platform-appropriate linking configuration
+libraries, library_dirs, extra_link_args = setup_platform_linking()
 
 # Call set_source with the appropriate configuration
 ffi.set_source(
@@ -565,57 +617,118 @@ ffi.set_source(
 
 pycparser_args = {"use_cpp": True, "cpp_args": DEFINE_ARGS}
 
-# On Windows, try to find a suitable C preprocessor
-if platform.system() == "Windows":
+
+def find_preprocessor():
+    """Find the best available C preprocessor for the current platform."""
     import shutil
 
-    # Try to find various C preprocessors that might be available on Windows
-    cpp_candidates = [
-        "cpp",  # Standard name
-        "gcc",  # Use gcc as preprocessor
-        "clang",  # Use clang as preprocessor
-        "cl",  # MSVC compiler (can be used as preprocessor)
-    ]
+    # Platform-specific preprocessor candidates
+    if platform.system() == "Windows":
+        cpp_candidates = [
+            "cpp",  # Standard name
+            "gcc",  # Use gcc as preprocessor
+            "clang",  # Use clang as preprocessor
+            "cl",  # MSVC compiler
+        ]
+    elif platform.system() == "Darwin":
+        cpp_candidates = [
+            "cpp",  # Standard name
+            "clang",  # Default on macOS
+            "/usr/bin/cpp",  # System cpp
+            "/usr/bin/clang",  # System clang
+            "gcc",  # Homebrew/MacPorts gcc
+            "/opt/homebrew/bin/cpp",  # Homebrew on Apple Silicon
+            "/usr/local/bin/cpp",  # Homebrew on Intel
+        ]
+    else:  # Linux and other Unix-like
+        cpp_candidates = [
+            "cpp",  # Standard name
+            "gcc",  # Use gcc as preprocessor
+            "clang",  # Use clang as preprocessor
+            "/usr/bin/cpp",  # System cpp
+        ]
 
-    cpp_path = None
+    cpp_info = None
     for candidate in cpp_candidates:
         cpp_path = shutil.which(candidate)
         if cpp_path:
-            if candidate == "cl":
-                # MSVC needs special handling - use /EP flag for preprocessing only
-                pycparser_args = {
-                    "use_cpp": True,
-                    "cpp_path": cpp_path,
-                    "cpp_args": ["/EP"]
-                    + [
-                        arg.replace("-D", "/D").replace("-I", "/I")
-                        for arg in DEFINE_ARGS
-                        if not arg.startswith("-L")
-                    ],
-                }
-            else:
-                pycparser_args = {
-                    "use_cpp": True,
-                    "cpp_path": cpp_path,
-                    "cpp_args": DEFINE_ARGS,
-                }
+            print(f"Found C preprocessor: {cpp_path}")
+            cpp_info = {"path": cpp_path, "name": candidate}
             break
 
-    if not cpp_path:
-        # If no preprocessor found, try to use fake_libc approach
+    return cpp_info
+
+
+def setup_pycparser_args():
+    """Setup pycparser arguments based on platform and available preprocessor."""
+    cpp_info = find_preprocessor()
+
+    if cpp_info:
+        if platform.system() == "Windows" and cpp_info["name"] == "cl":
+            # MSVC needs special handling - use /EP flag for preprocessing only
+            return {
+                "use_cpp": True,
+                "cpp_path": cpp_info["path"],
+                "cpp_args": ["/EP"]
+                + [
+                    arg.replace("-D", "/D").replace("-I", "/I")
+                    for arg in DEFINE_ARGS
+                    if not arg.startswith("-L")
+                ],
+            }
+        elif platform.system() == "Darwin":
+            # macOS-specific cpp arguments to avoid common issues
+            darwin_args = []
+            for arg in DEFINE_ARGS:
+                # Skip problematic arguments that cause issues on macOS
+                if not any(
+                    skip in arg
+                    for skip in [
+                        "__STDC_VERSION__",  # Let compiler define this
+                        "-mmacosx-version-min",  # Not needed for preprocessing
+                        "-arch",  # Architecture flags not needed
+                    ]
+                ):
+                    darwin_args.append(arg)
+
+            return {
+                "use_cpp": True,
+                "cpp_path": cpp_info["path"],
+                "cpp_args": darwin_args,
+            }
+        else:
+            # Standard Unix-like systems
+            return {
+                "use_cpp": True,
+                "cpp_path": cpp_info["path"],
+                "cpp_args": DEFINE_ARGS,
+            }
+    else:
+        # No preprocessor found - platform-specific fallbacks
         print(
-            "Warning: No C preprocessor found on Windows. Trying alternative parsing method."
+            f"Warning: No C preprocessor found on {platform.system()}. Using alternative parsing method."
         )
-        # Use a more basic parsing approach without cpp, but provide essential definitions
-        # Add essential Windows definitions for parsing
-        pycparser_args = {
-            "use_cpp": False,
-            # Add fake includes to help with parsing
-            "cpp_args": [
-                "-Iutils/fake_libc_include",
-                "-Iutils/fake_windows_include",
-            ],
-        }
+
+        if platform.system() == "Windows":
+            return {
+                "use_cpp": False,
+                "cpp_args": [
+                    "-Iutils/fake_libc_include",
+                    "-Iutils/fake_windows_include",
+                ],
+            }
+        else:
+            # Unix-like systems fallback
+            return {
+                "use_cpp": False,
+                "cpp_args": [
+                    "-Iutils/fake_libc_include",
+                ],
+            }
+
+
+# Setup platform-appropriate pycparser arguments
+pycparser_args = setup_pycparser_args()
 
 
 def preprocess_header_manually(header_path):
@@ -697,11 +810,31 @@ def try_parse_with_better_args(header_path, header_name):
         f"-I{include_dir}/dyscom-level",
     ]
 
-    # With improved header guards, we can use consistent bool handling across platforms
+    # Platform-specific preprocessor argument handling
     if platform.system() == "Windows":
         asm_definition = "-D__asm__="
-    else:
+        platform_definitions = [
+            "-D__declspec(x)=",
+            "-D_WIN32=1",
+            "-D_MSC_VER=1900",  # Simulate recent MSVC
+        ]
+    elif platform.system() == "Darwin":
         asm_definition = "-D__asm__(...)="
+        platform_definitions = [
+            "-D__APPLE__=1",
+            "-D__MACH__=1",
+            "-D__attribute__(x)=",
+            "-D__declspec(x)=",
+            "-D__builtin_available(...)=1",  # macOS availability checks
+        ]
+    else:  # Linux and other Unix-like
+        asm_definition = "-D__asm__(...)="
+        platform_definitions = [
+            "-D__linux__=1",
+            "-D__GNUC__=7",  # Simulate GCC 7+
+            "-D__attribute__(x)=",
+            "-D__declspec(x)=",
+        ]
 
     bool_definitions = [
         "-D_Bool=unsigned char",
@@ -710,34 +843,32 @@ def try_parse_with_better_args(header_path, header_name):
         "-Dfalse=0",
     ]
 
+    # Common definitions that work across platforms
+    common_definitions = [
+        "-D__restrict=",
+        "-D__extension__=",
+        "-D__inline=",
+        "-D__always_inline=",
+        "-D__builtin_va_list=char*",
+        "-D__signed__=signed",
+        "-D__const=const",
+        "-D__volatile__=volatile",
+        "-DSMPT_API=",
+        "-DSMPT_EXPORTS=",
+        "-DSMPT_DLL=",
+        "-DUC_MAIN=",
+        "-D__bool_true_false_are_defined=1",
+    ]
+
     parsing_attempts = [
-        # Primary approach: use cpp with optimized args but NO fake libc
+        # Primary approach: use cpp with optimized args
         {
             "use_cpp": True,
             "cpp_args": include_paths
             + bool_definitions
-            + [
-                # Essential definitions without fake libc that causes issues
-                "-D__attribute__(x)=",
-                "-D__restrict=",
-                "-D__extension__=",
-                "-D__inline=",
-                "-D__always_inline=",
-                "-D__builtin_va_list=char*",
-                asm_definition,
-                "-D__signed__=signed",
-                "-D__const=const",
-                "-D__volatile__=volatile",
-                "-D__declspec(x)=",  # Define away Windows __declspec
-                "-DSMPT_API=",  # Define away SMPT_API
-                "-DSMPT_EXPORTS=",
-                "-DSMPT_DLL=",
-                "-DUC_MAIN=",
-                # Add stdbool.h compatibility - but don't override built-in __STDC_VERSION__
-                "-D__bool_true_false_are_defined=1",
-                # Don't redefine __STDC_VERSION__ - let the compiler use its built-in value
-                # This prevents the "macro redefined" warning on macOS
-            ],
+            + platform_definitions
+            + common_definitions
+            + [asm_definition],
         },
         # Fallback 1: cpp with minimal args only
         {
@@ -746,11 +877,10 @@ def try_parse_with_better_args(header_path, header_name):
             + bool_definitions
             + [
                 "-D__attribute__(x)=",
-                "-D__declspec(x)=",  # Define away Windows __declspec
-                "-DSMPT_API=",  # Define away SMPT_API
+                "-D__declspec(x)=",
+                "-DSMPT_API=",
                 "-DSMPT_EXPORTS=",
                 "-DSMPT_DLL=",
-                # Don't add any manual constants here - let the headers define them naturally
             ],
         },
         # Fallback 2: no cpp at all
@@ -758,6 +888,23 @@ def try_parse_with_better_args(header_path, header_name):
             "use_cpp": False,
         },
     ]
+
+    # For macOS, add a special attempt with reduced definitions to avoid conflicts
+    if platform.system() == "Darwin":
+        macos_minimal_attempt = {
+            "use_cpp": True,
+            "cpp_args": include_paths
+            + bool_definitions
+            + [
+                "-D__attribute__(x)=",
+                "-D__declspec(x)=",
+                "-DSMPT_API=",
+                "-D__asm__(...)=",
+                # Skip version-specific definitions that may conflict
+            ],
+        }
+        # Insert this attempt as the second option
+        parsing_attempts.insert(1, macos_minimal_attempt)
 
     for i, args in enumerate(parsing_attempts):
         try:
@@ -925,25 +1072,9 @@ cdef = cdef.replace("[Smpt_Length_Number_Of_Channels]", "[8]")
 cdef = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 cdef = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 
-# Fix platform-specific field errors
-if "serial_port_handle_" in cdef and not sys.platform.startswith("win"):
-    # Remove the Windows-specific field for non-Windows platforms
-    cdef = cdef.replace(
-        "HANDLE serial_port_handle_;", "/* Windows only: HANDLE serial_port_handle_; */"
-    )
-elif "serial_port_descriptor" in cdef and sys.platform.startswith("win"):
-    # Remove the Linux/macOS field for Windows
-    cdef = cdef.replace(
-        "int serial_port_descriptor;",
-        "/* Linux/macOS only: int serial_port_descriptor; */",
-    )
-
-
-# Add explicit verification for enums that might be used in struct fields
-# This is needed because CFFI tries to infer the size of enums and may fail
-# Defining these explicitly helps CFFI understand struct layouts correctly
-verification_code = """
-typedef enum {
+# Fix enum values that were sanitized but need real values for CFFI
+# Replace sanitized Smpt_Result enum with explicit values
+smpt_result_enum = """typedef enum {
     Smpt_Result_Successful = 0,
     Smpt_Result_Transfer_Error = 1,
     Smpt_Result_Parameter_Error = 2,
@@ -974,14 +1105,34 @@ typedef enum {
     Smpt_Result_Fuel_Gauge_Not_Programmed = 27,
     Smpt_Result_Pulse_Low_Current_Error = 28,
     Smpt_Result_Last_Item = 29
-} Smpt_Result;
-"""
+} Smpt_Result;"""
 
-# Add the verification code to the beginning of our CFFI definitions
-cdef = verification_code + cdef
+# Replace the sanitized enum with explicit values
+import re
+
+cdef = re.sub(
+    r"typedef enum\s*\{[^}]*Smpt_Result_Successful\s*=\s*\.\.\.[^}]*\}\s*Smpt_Result;",
+    smpt_result_enum,
+    cdef,
+    flags=re.DOTALL,
+)
+
+# Fix platform-specific field errors
+if "serial_port_handle_" in cdef and not sys.platform.startswith("win"):
+    # Remove the Windows-specific field for non-Windows platforms
+    cdef = cdef.replace(
+        "HANDLE serial_port_handle_;", "/* Windows only: HANDLE serial_port_handle_; */"
+    )
+elif "serial_port_descriptor" in cdef and sys.platform.startswith("win"):
+    # Remove the Linux/macOS field for Windows
+    cdef = cdef.replace(
+        "int serial_port_descriptor;",
+        "/* Linux/macOS only: int serial_port_descriptor; */",
+    )
+
 
 # Define the CFFI interface with the combined definitions
-# Use override=True to handle duplicate definitions (especially for Smpt_Result)
+# Use override=True to handle duplicate definitions
 ffi.cdef(cdef, override=True)
 
 

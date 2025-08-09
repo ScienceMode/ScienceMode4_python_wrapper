@@ -6,9 +6,9 @@ import os
 import sys
 import ctypes
 from pathlib import Path
-from . import sciencemode
 
-# First, try to load the shared library from our package directory
+# Import the main CFFI functionality
+from . import sciencemode
 
 
 def _find_and_load_library():
@@ -42,5 +42,101 @@ def _find_and_load_library():
 # Preload the library
 _libsmpt = _find_and_load_library()
 
+# Import CFFI wrapper components and expose them at package level
+try:
+    # Try to import the CFFI-generated module
+    from ._sciencemode import lib, ffi
 
-__all__ = ["sciencemode"]
+    # Expose the CFFI library and FFI objects
+    lib = lib
+    ffi = ffi
+
+    # Create convenience functions for common structures
+    def new_device():
+        """Create a new Smpt_device structure"""
+        return ffi.new("Smpt_device *")
+
+    def new_ll_init():
+        """Create a new Smpt_ll_init structure"""
+        return ffi.new("Smpt_ll_init *")
+
+    def new_ll_channel_config():
+        """Create a new Smpt_ll_channel_config structure"""
+        return ffi.new("Smpt_ll_channel_config *")
+
+    def new_ml_init():
+        """Create a new Smpt_ml_init structure"""
+        return ffi.new("Smpt_ml_init *")
+
+    def new_ml_update():
+        """Create a new Smpt_ml_update structure"""
+        return ffi.new("Smpt_ml_update *")
+
+    # Expose commonly used enums and constants
+    # These will be available directly as attributes
+    try:
+        # Result codes
+        Smpt_Result_Successful = lib.Smpt_Result_Successful
+        Smpt_Result_Unsuccessful = lib.Smpt_Result_Unsuccessful
+
+        # Channel numbers
+        Smpt_Channel_Red = lib.Smpt_Channel_Red
+        Smpt_Channel_Blue = lib.Smpt_Channel_Blue
+    except AttributeError:
+        # If these specific constants aren't available, that's okay
+        pass
+
+    # Add commonly used structures as constructors
+    try:
+        # Make structures available as direct constructors
+        def Smpt_device():
+            return ffi.new("Smpt_device *")
+
+        def Smpt_ll_init():
+            return ffi.new("Smpt_ll_init *")
+
+        def Smpt_ll_channel_config():
+            return ffi.new("Smpt_ll_channel_config *")
+
+        def Smpt_ml_init():
+            return ffi.new("Smpt_ml_init *")
+
+        def Smpt_ml_update():
+            return ffi.new("Smpt_ml_update *")
+
+    except Exception:
+        # If any structure creation fails, define minimal fallbacks
+        pass
+
+    # Export main functionality
+    __all__ = [
+        "lib",
+        "ffi",
+        "sciencemode",
+        "new_device",
+        "new_ll_init",
+        "new_ll_channel_config",
+        "new_ml_init",
+        "new_ml_update",
+        "Smpt_device",
+        "Smpt_ll_init",
+        "Smpt_ll_channel_config",
+        "Smpt_ml_init",
+        "Smpt_ml_update",
+    ]
+
+    # Add result constants if available
+    if "Smpt_Result_Successful" in locals():
+        __all__.extend(["Smpt_Result_Successful", "Smpt_Result_Unsuccessful"])
+
+    # Add channel constants if available
+    if "Smpt_Channel_Red" in locals():
+        __all__.extend(["Smpt_Channel_Red", "Smpt_Channel_Blue"])
+
+except ImportError as e:
+    # If CFFI module is not available, provide a minimal interface
+    print(f"Warning: CFFI module not available: {e}")
+    print("You may need to rebuild the CFFI module.")
+
+    # Still export the sciencemode module for basic functionality
+    __all__ = ["sciencemode"]
