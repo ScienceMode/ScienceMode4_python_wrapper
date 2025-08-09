@@ -187,11 +187,16 @@ DEFINE_ARGS = (
             "-D__declspec(x)=",
             "-D__forceinline=",
             "-D__inline=",
-            # With improved header guards, we can use consistent bool handling
-            "-D_Bool=unsigned char",
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
+            # For Windows, avoid redefining bool if stdbool.h is available
+            # Only define if not already defined to avoid macro redefinition warnings
+            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion conflicts
+            "-D__STDBOOL_H",  # Additional header guard
+            # Windows-specific definitions to ensure proper header parsing
+            "-D_WIN32",
+            "-DWIN32",
+            "-D_WINDOWS",
+            # Ensure consistent structure definitions by making sure Windows macros are properly defined
+            "-D_MSC_FULL_VER=190000000",
         ]
         if sys.platform.startswith("win")
         else [
@@ -816,7 +821,14 @@ def try_parse_with_better_args(header_path, header_name):
         platform_definitions = [
             "-D__declspec(x)=",
             "-D_WIN32=1",
+            "-DWIN32=1",
+            "-D_WINDOWS=1",
             "-D_MSC_VER=1900",  # Simulate recent MSVC
+            "-D_MSC_FULL_VER=190000000",
+            "-D__forceinline=inline",
+            "-D__inline=inline",
+            # Ensure Windows structure definitions are consistent
+            "-DSMPT_EXPORTS",  # This might affect how structures are defined
         ]
     elif platform.system() == "Darwin":
         asm_definition = "-D__asm__(...)="
@@ -973,13 +985,31 @@ if not parse_success:
     # Add minimal essential types that tests expect with instantiable field definitions
     # These provide enough structure for basic testing while being safe to instantiate
     # Updated to match actual C structure definitions
+    # If header parsing completely failed, provide minimal essential structures
+    # that are required for basic functionality - but make sure they match the real headers!
     collector.typedecls.extend(
         [
-            # Basic device structure with essential fields (matches actual Smpt_device)
+            # Minimal device structure - matches the actual Smpt_device structure
             """typedef struct {
                 unsigned int packet_length;
                 unsigned char packet[1200];
-                unsigned char cmd_list_data[1000];
+                struct {
+                    unsigned int acks_length;
+                    unsigned int acks_current_index; 
+                    struct {
+                        unsigned char packet_number;
+                        unsigned short command_number;
+                        unsigned char result;
+                    } acks[100];
+                    unsigned int requests_current_index;
+                    unsigned int requests_expected_index;
+                    unsigned int number_of_expected;
+                    struct {
+                        unsigned char packet_number;
+                        unsigned short command_number;
+                    } requests[100];
+                    unsigned int new_ack_available;
+                } cmd_list;
                 signed char current_packet_number;
                 char serial_port_name[256];
                 unsigned char packet_input_buffer_data[120000];
@@ -998,15 +1028,6 @@ if not parse_success:
                 unsigned char current;
                 unsigned char reserved[13];
             } Smpt_ll_channel_config;""",
-            # Version acknowledgment structure
-            """typedef struct {
-                unsigned char packet_number;
-                unsigned char version_major;
-                unsigned char version_minor;
-                unsigned char version_patch;
-                char version_string[64];
-                unsigned char reserved[16];
-            } Smpt_get_extended_version_ack;""",
             # Generic acknowledgment structure (matches actual Smpt_ack)
             """typedef struct {
                 unsigned char packet_number;
