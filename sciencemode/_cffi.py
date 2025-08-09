@@ -1,229 +1,98 @@
-"""
-CFFI wrapper for ScienceMode library.
+# -*- coding: utf-8 -*-
 
-This module uses CFFI to provide Python bindings for the ScienceMode library.
-It handles the compilation, linking, and loading of the C library, and provides
-utility functions for working with the CFFI interface.
-
-The module offers:
-- Automatic header file and library detection
-- Platform-specific handling for Windows, macOS, and Linux
-- Resource management through context managers
-- Memory management helpers
-- Error handling utilities
-- String conversion functions
-"""
-
-import glob
-import itertools
 import os
 import platform
-import re
 import sys
-
-import pycparser
+import re
+import itertools
 from cffi import FFI
+import pycparser
 from pycparser import c_ast
 from pycparser.c_generator import CGenerator
 
-# Regular expressions for parsing include paths and #define statements
+# Get the directory of this file
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+
+# Print for debugging
+print(f"Found ScienceMode in: {project_root}")
+
+# Setup paths based on the structure
+smpt_submodule_path = os.path.join(project_root, "smpt", "ScienceMode_Library")
+if os.path.exists(smpt_submodule_path):
+    devel_root = smpt_submodule_path
+    print(f"Using submodule SMPT library: {devel_root}")
+else:
+    # Try current directory structure
+    devel_root = os.path.join(project_root, "smpt", "ScienceMode_Library")
+    print(f"Using local SMPT library: {devel_root}")
+
+include_dir = os.path.join(devel_root, "include")
+
+# Check if we have the include directory
+if not os.path.exists(include_dir):
+    raise FileNotFoundError(f"SMPT include directory not found at: {include_dir}")
+
+smpt_lib_path = os.path.join(project_root, "lib")
+
+smpt_include_path1 = os.path.join(include_dir, "general")
+smpt_include_path2 = os.path.join(include_dir, "low-level")
+smpt_include_path3 = os.path.join(include_dir, "mid-level")
+smpt_include_path4 = os.path.join(include_dir, "dyscom-level")
+
 INCLUDE_PATTERN = re.compile(r"(-I)?(.*ScienceMode)")
 DEFINE_PATTERN = re.compile(r"^#define\s+(\w+)\s+\(?([\w<|.]+)\)?", re.M)
-
-# List of symbols that should not be processed as #define statements
 DEFINE_BLACKLIST = {
     "main",
 }
 
-# Get the directory where this _cffi.py file is located (package directory)
-package_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Try to find the include directory in different locations
-# Check installed package directory first, then development locations
-devel_root_candidates = [
-    os.path.join(package_dir, "include"),  # Bundled in package directory (installed)
-    os.path.abspath(
-        "./smpt/ScienceMode_Library/include"
-    ),  # Standard source tree layout
-    os.path.abspath("./smpt/ScienceMode_Library"),  # Alternative source layout
-    os.path.abspath("../smpt/ScienceMode_Library/include"),  # When in a subdirectory
-    os.path.abspath("../smpt/ScienceMode_Library"),  # When in a subdirectory
-    os.path.abspath("../include/ScienceMode4"),  # Installed version layout
-    os.path.abspath("./include/ScienceMode4"),  # Installed version layout
+# Define GCC specific compiler extensions away - simplified from original + minimal bool support
+DEFINE_ARGS = [
+    "-D__attribute__(x)=",
+    "-D__inline=",
+    "-D__restrict=",
+    "-D__extension__=",
+    "-D__GNUC_VA_LIST=",
+    "-D__inline__=",
+    "-D__forceinline=",
+    "-D__volatile__=",
+    "-D__MINGW_NOTHROW=",
+    "-D__nothrow__=",
+    "-DCRTIMP=",
+    "-DSDL_FORCE_INLINE=",
+    "-DDOXYGEN_SHOULD_IGNORE_THIS=",
+    "-D_PROCESS_H_=",
+    "-U__GNUC__",
+    "-Ui386",
+    "-U__i386__",
+    "-U__MINGW32__",
+    "-DNT_INCLUDED",
+    "-D_MSC_VER=1900",
+    # Minimal bool support - just enough for pycparser to understand modern headers
+    "-D_Bool=_Bool",
+    "-Dbool=_Bool",
+    "-Dtrue=1",
+    "-Dfalse=0",
+    # Windows types that pycparser needs to understand
+    "-DHANDLE=void*",
+    "-L" + smpt_lib_path,
+    "-Iutils/fake_libc_include",
+    "-Iutils/fake_windows_include",
+    "-I" + smpt_include_path1,
+    "-I" + smpt_include_path2,
+    "-I" + smpt_include_path3,
+    "-I" + smpt_include_path4,
 ]
 
-# Find the first valid include directory
-include_dir = None
-for candidate in devel_root_candidates:
-    if os.path.exists(os.path.join(candidate, "general")) or os.path.exists(candidate):
-        include_dir = candidate
-        break
-
-# If none found, default to the first one (will fail but with clear error)
-if include_dir is None:
-    include_dir = os.path.join(devel_root_candidates[0], "include")
-    print(
-        f"Warning: Could not find ScienceMode include directory. "
-        f"Using default: {include_dir}"
-    )
-else:
-    print(f"Found ScienceMode include directory: {include_dir}")
-
-# Define library path and check if it exists
-# First check package directory (installed), then development directory
-package_dir = os.path.dirname(os.path.abspath(__file__))
-smpt_lib_paths = [
-    package_dir,  # Bundled in package directory (installed)
-    os.path.abspath("./lib"),  # Development directory
-]
-
-# Find the first directory that contains library files
-smpt_lib_path = os.path.abspath("./lib")  # Default fallback
-lib_found = False
-
+# Add platform-specific defines
 if platform.system() == "Windows":
-    # Prefer static libraries (.lib) for wheel distribution
-    lib_patterns = ["smpt.lib", "libsmpt.lib", "smpt.dll", "libsmpt.dll"]
+    DEFINE_ARGS.append("-D_WIN32")
+elif platform.system() == "Linux":
+    DEFINE_ARGS.append("-D__linux__")
 elif platform.system() == "Darwin":
-    # Prefer static libraries (.a) for wheel distribution
-    lib_patterns = ["libsmpt.a", "libsmpt.dylib"]
-else:
-    # Prefer static libraries (.a) for wheel distribution
-    lib_patterns = ["libsmpt.a", "libsmpt.so"]
+    DEFINE_ARGS.append("-D__APPLE__")
 
-# Check each possible library path
-for lib_path in smpt_lib_paths:
-    for pattern in lib_patterns:
-        if glob.glob(os.path.join(lib_path, pattern)):
-            smpt_lib_path = lib_path
-            lib_found = True
-            break
-    if lib_found:
-        break
-
-# If no library found, fall back to creating ./lib directory (development mode)
-if not lib_found:
-    # Create lib directory if it doesn't exist
-    if not os.path.exists(smpt_lib_path):
-        try:
-            print(f"Creating lib directory: {smpt_lib_path}")
-            os.makedirs(smpt_lib_path, exist_ok=True)
-        except Exception as e:
-            print(f"Warning: Could not create lib directory: {e}")
-
-    # Check for SMPT library existence in the created directory
-    for pattern in lib_patterns:
-        if glob.glob(os.path.join(smpt_lib_path, pattern)):
-            lib_found = True
-            break
-
-if not lib_found:
-    print("*" * 80)
-    print(f"Warning: No SMPT library found in {smpt_lib_path}")
-    print("Ensure that 'pip install -e .' completed successfully.")
-    print("The setup.py script should build the SMPT library using CMake.")
-    print("*" * 80)
-else:
-    print(f"Found SMPT library in: {smpt_lib_path}")
-
-# Set the include paths based on the directory structure
-if os.path.exists(os.path.join(include_dir, "general")):
-    # Standard structure from source tree
-    smpt_include_path1 = os.path.join(include_dir, "general")
-    smpt_include_path2 = os.path.join(include_dir, "low-level")
-    smpt_include_path3 = os.path.join(include_dir, "mid-level")
-    smpt_include_path4 = os.path.join(include_dir, "dyscom-level")
-else:
-    # In the installed version, all files are in the same directory
-    smpt_include_path1 = include_dir
-    smpt_include_path2 = include_dir
-    smpt_include_path3 = include_dir
-    smpt_include_path4 = include_dir
-
-# define GCC specific compiler extensions away
-# Define preprocessor arguments for pycparser
-# These definitions help parse the header files correctly by:
-# 1. Setting the appropriate platform macros based on the current system
-# 2. Defining away GCC-specific extensions that pycparser can't handle
-# 3. Setting up include paths for both real headers and fake headers
-# 4. MOST IMPORTANTLY: Ensuring consistent type mapping for _Bool/bool during both parsing AND compilation
-DEFINE_ARGS = (
-    [
-        # Platform definitions - set according to current platform
-        # but make sure to handle platform-specific fields in structures
-        "-D{}".format(
-            "_WIN32"
-            if sys.platform.startswith("win")
-            else "__APPLE__"
-            if sys.platform.startswith("darwin")
-            else "__linux__"
-        ),
-        "-D__attribute__(x)=",
-        "-D__inline=",
-        "-D__restrict=",
-        "-D__extension__=",
-        "-D__GNUC_VA_LIST=",
-        "-D__inline__=",
-        "-D__forceinline=",
-        "-D__volatile__=",
-        "-D__MINGW_NOTHROW=",
-        "-D__nothrow__=",
-        "-DCRTIMP=",
-        "-DSDL_FORCE_INLINE=",
-        "-DDOXYGEN_SHOULD_IGNORE_THIS=",
-        "-D_PROCESS_H_=",
-        "-U__GNUC__",
-        "-Ui386",
-        "-U__i386__",
-        "-U__MINGW32__",
-        "-DNT_INCLUDED",
-    ]
-    + (
-        [
-            "-D_MSC_VER=1900",
-            # Windows-specific: Define __asm__ with variadic arguments to handle both single and multi-argument usage
-            "-D__asm__=",
-            # Additional Windows inline assembly compatibility
-            "-D__declspec(x)=",
-            "-D__forceinline=",
-            "-D__inline=",
-            # For Windows, avoid redefining bool if stdbool.h is available
-            # Only define if not already defined to avoid macro redefinition warnings
-            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion conflicts
-            "-D__STDBOOL_H",  # Additional header guard
-            # Windows-specific definitions to ensure proper header parsing
-            "-D_WIN32",
-            "-DWIN32",
-            "-D_WINDOWS",
-            # Ensure consistent structure definitions by making sure Windows macros are properly defined
-            "-D_MSC_FULL_VER=190000000",
-        ]
-        if sys.platform.startswith("win")
-        else [
-            "-U_MSC_VER",
-            # With improved header guards, we can use consistent bool handling across platforms
-            "-D_Bool=unsigned char",
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
-            "-D__bool_true_false_are_defined=1",
-        ]
-    )
-    + [
-        # Define HANDLE type for Windows to make CFFI happy
-        "-DHANDLE=void*",
-        "-L" + smpt_lib_path,
-        "-Iutils/fake_libc_include",
-        "-Iutils/fake_windows_include",
-        "-I" + smpt_include_path1,
-        "-I" + smpt_include_path2,
-        "-I" + smpt_include_path3,
-        "-I" + smpt_include_path4,
-    ]
-)
-
-# List of function names that should be excluded from processing
-FUNCTION_BLACKLIST = {}  # Empty for now, but can be populated if needed
+FUNCTION_BLACKLIST = {}
 
 VARIADIC_ARG_PATTERN = re.compile(r"va_list \w+")
 ARRAY_SIZEOF_PATTERN = re.compile(r"\[[^\]]*sizeof[^\]]*]")
@@ -274,56 +143,31 @@ HEADERS = [
     "dyscom-level/smpt_dl_definitions_data_types.h",
 ]
 
-# Headers to include
-if os.path.exists(os.path.join(include_dir, "general")):
-    # Standard structure from source tree
-    ROOT_HEADERS = [
-        "general/smpt_client.h",
-        "dyscom-level/smpt_dl_client.h",
-        "low-level/smpt_ll_client.h",
-        "mid-level/smpt_ml_client.h",
-    ]
-else:
-    # In the installed version, all files are in the same directory
-    ROOT_HEADERS = [
-        "smpt_client.h",
-        "smpt_dl_client.h",
-        "smpt_ll_client.h",
-        "smpt_ml_client.h",
-    ]
+ROOT_HEADERS = [
+    "general/smpt_client.h",
+    "dyscom-level/smpt_dl_client.h",
+    "low-level/smpt_ll_client.h",
+    "mid-level/smpt_ml_client.h",
+]
 
 
 class Collector(c_ast.NodeVisitor):
-    """AST visitor that collects type declarations and function definitions.
-
-    This class walks through the Abstract Syntax Tree (AST) of C code and
-    extracts all type declarations (structs, enums, typedefs) and function
-    declarations for use with CFFI.
-    """
-
     def __init__(self):
-        """Initialize the collector with empty lists for types and functions."""
-        self.generator = CGenerator()  # For generating C code from AST nodes
-        self.typedecls = []  # Will hold all type declarations
-        self.functions = []  # Will hold all function declarations
+        self.generator = CGenerator()
+        self.typedecls = []
+        self.functions = []
 
     def process_typedecl(self, node):
         coord = os.path.abspath(node.coord.file)
         if node.coord is None or coord.find(include_dir) != -1:
-            typedecl = f"{self.generator.visit(node)};"
+            typedecl = "{};".format(self.generator.visit(node))
             typedecl = ARRAY_SIZEOF_PATTERN.sub("[...]", typedecl)
-
-            # Fix _Bool array compatibility issues
-            # Replace _Bool arrays with unsigned char arrays for CFFI compatibility
-            typedecl = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", typedecl)
-            typedecl = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", typedecl)
-
             if typedecl not in self.typedecls:
                 self.typedecls.append(typedecl)
 
     def sanitize_enum(self, enum):
-        for _name, enumeratorlist in enum.children():
-            for _name, enumerator in enumeratorlist.children():
+        for name, enumeratorlist in enum.children():
+            for name, enumerator in enumeratorlist.children():
                 enumerator.value = c_ast.Constant("dummy", "...")
         return enum
 
@@ -357,7 +201,7 @@ class Collector(c_ast.NodeVisitor):
                 function_name = node.type.declname
             if function_name in FUNCTION_BLACKLIST:
                 return
-            decl = f"{self.generator.visit(node)};"
+            decl = "{};".format(self.generator.visit(node))
             decl = VARIADIC_ARG_PATTERN.sub("...", decl)
             if decl not in self.functions:
                 self.functions.append(decl)
@@ -365,241 +209,9 @@ class Collector(c_ast.NodeVisitor):
 
 ffi = FFI()
 
-
-# Function to initialize the library once
-def _init_smpt_lib():
-    """Initialize the ScienceMode library once during the program's lifetime."""
-    print("Initializing ScienceMode library...")
-    # Any one-time initialization could go here
-    return {
-        "include_dir": include_dir,
-        "lib_path": smpt_lib_path,
-        "platform": platform.system(),
-    }
-
-
-# Function to load library directly (useful for testing and debug)
-def load_library():  # noqa: C901
-    """Try to load the SMPT library directly using ffi.dlopen().
-
-    This is useful for direct testing without building the extension module.
-    Returns the loaded library or None if not found.
-    """
-    # Choose library pattern based on platform
-    if platform.system() == "Windows":
-        patterns = ["smpt.dll", "libsmpt.dll"]
-    elif platform.system() == "Darwin":
-        patterns = ["libsmpt.dylib"]
-    else:
-        patterns = ["libsmpt.so"]
-
-    # Try to load the library from the lib path
-    for pattern in patterns:
-        try:
-            lib_path = os.path.join(smpt_lib_path, pattern)
-            if os.path.exists(lib_path):
-                print(f"Loading library from: {lib_path}")
-                return ffi.dlopen(lib_path)
-        except Exception as e:
-            print(f"Failed to load {pattern}: {e}")
-            if platform.system() == "Windows":
-                try:
-                    # Use ctypes for Windows error handling
-                    import ctypes
-
-                    # Check if we're on Windows to safely use windll
-                    if sys.platform.startswith("win"):
-                        try:
-                            # Try to get Windows error details
-                            windll_attr = getattr(ctypes, "windll", None)
-                            if windll_attr:
-                                kernel32 = getattr(windll_attr, "kernel32", None)
-                                if kernel32:
-                                    get_error = getattr(kernel32, "GetLastError", None)
-                                    if get_error:
-                                        error_code = get_error()
-                                        print(f"Windows error code: {error_code}")
-
-                                        # Try to format the error message
-                                        try:
-                                            FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
-                                            FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
-
-                                            # Buffer for the error message
-                                            buffer_size = 256
-                                            buffer = ctypes.create_string_buffer(
-                                                buffer_size
-                                            )
-
-                                            # Get the error message
-                                            format_msg = getattr(
-                                                kernel32, "FormatMessageA", None
-                                            )
-                                            if format_msg:
-                                                format_msg(
-                                                    FORMAT_MESSAGE_FROM_SYSTEM
-                                                    | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                                    None,
-                                                    error_code,
-                                                    0,
-                                                    buffer,
-                                                    buffer_size,
-                                                    None,
-                                                )
-
-                                                # Convert message to Python string
-                                                message = buffer.value.decode(
-                                                    "utf-8", errors="replace"
-                                                ).strip()
-                                                print(f"Windows error: {message}")
-                                        except Exception as msg_err:
-                                            print(f"Error formatting: {msg_err}")
-                                    else:
-                                        print("GetLastError not available")
-                                else:
-                                    print("kernel32 not available")
-                            else:
-                                print("windll not available")
-                        except Exception:
-                            print("Error accessing Windows functionality")
-                    else:
-                        print("Not on Windows, skipping error handling")
-                except Exception as win_err:
-                    print(f"Error getting Windows error details: {win_err}")
-            else:
-                try:
-                    if hasattr(ffi, "errno"):
-                        print(f"Error code: {ffi.errno}")
-                    else:
-                        print("Error occurred but errno not available")
-                except Exception as err_ex:
-                    print(f"Error getting error code: {err_ex}")
-
-    print("Could not load library directly")
-    return None
-
-
-# Determine appropriate linker flags and library settings based on platform
-extra_compile_args = ["-DSMPT_STATIC"]
-
-# Add the same type definitions to compile args as we use for parsing
-# This ensures consistency between parsing and compilation
-# With improved header guards, we can use consistent bool handling across platforms
-if platform.system() != "Windows":
-    extra_compile_args.extend(
-        [
-            "-D_Bool=unsigned char",
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
-            "-D__bool_true_false_are_defined=1",
-        ]
-    )
-else:
-    # On Windows with MSVC, prevent stdbool.h inclusion and define bool consistently
-    extra_compile_args.extend(
-        [
-            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion
-            "-D__STDBOOL_H",  # Alternative stdbool.h guard
-            # Don't define bool macros on Windows - let the compiler handle it
-        ]
-    )
-
-
-# Platform-specific library and linking configuration
-def setup_platform_linking():
-    """Setup platform-specific library linking configuration."""
-    libraries = ["smpt"]  # Default library name without lib prefix
-    extra_link_args = []
-    library_dirs = [smpt_lib_path]
-
-    if platform.system() == "Windows":
-        # Windows-specific library detection and configuration
-        static_lib_candidates = ["smpt.lib", "libsmpt.lib", "smpt_static.lib"]
-        dll_candidates = ["smpt.dll", "libsmpt.dll"]
-
-        # Look for static library first
-        static_lib_path = None
-        for candidate in static_lib_candidates:
-            candidate_path = os.path.join(smpt_lib_path, candidate)
-            if os.path.exists(candidate_path):
-                static_lib_path = candidate_path
-                break
-
-        if static_lib_path:
-            print(f"Using static library: {static_lib_path}")
-            # For static linking on Windows, we may need special flags
-            extra_link_args = ["/WHOLEARCHIVE:smpt"]
-        else:
-            # Look for DLL
-            dll_path = None
-            for candidate in dll_candidates:
-                candidate_path = os.path.join(smpt_lib_path, candidate)
-                if os.path.exists(candidate_path):
-                    dll_path = candidate_path
-                    break
-
-            if dll_path:
-                print(f"Using DLL: {dll_path}")
-                extra_link_args = []
-            else:
-                print("Warning: Could not find static library or DLL on Windows.")
-                print("Attempting to use default library search path.")
-                extra_link_args = []
-
-    elif platform.system() == "Darwin":
-        # macOS-specific library detection
-        dylib_candidates = ["libsmpt.dylib", "libsmpt.so"]
-        static_candidates = ["libsmpt.a"]
-
-        # Prefer dynamic libraries on macOS
-        found_lib = False
-        for candidate in dylib_candidates + static_candidates:
-            candidate_path = os.path.join(smpt_lib_path, candidate)
-            if os.path.exists(candidate_path):
-                print(f"Using macOS library: {candidate_path}")
-                found_lib = True
-                break
-
-        if not found_lib:
-            print("Warning: Could not find suitable library on macOS.")
-            print("Attempting to use default library search path.")
-
-        # macOS may need specific flags for proper linking
-        extra_link_args = []
-        # Add any macOS-specific linker flags if needed
-        # extra_link_args.extend(["-Wl,-rpath,@loader_path"])
-
-    else:
-        # Linux and other Unix-like systems
-        so_candidates = ["libsmpt.so", "libsmpt.so.4", "libsmpt.so.4.0.0"]
-        static_candidates = ["libsmpt.a"]
-
-        # Prefer shared libraries on Linux
-        found_lib = False
-        for candidate in so_candidates + static_candidates:
-            candidate_path = os.path.join(smpt_lib_path, candidate)
-            if os.path.exists(candidate_path):
-                print(f"Using Linux library: {candidate_path}")
-                found_lib = True
-                break
-
-        if not found_lib:
-            print("Warning: Could not find suitable library on Linux.")
-            print("Attempting to use default library search path.")
-
-        extra_link_args = []
-
-    return libraries, library_dirs, extra_link_args
-
-
-# Setup platform-appropriate linking configuration
-libraries, library_dirs, extra_link_args = setup_platform_linking()
-
-# Call set_source with the appropriate configuration
 ffi.set_source(
     "sciencemode._sciencemode",
-    ("\n").join([f'#include "{header}"' for header in ROOT_HEADERS]),
+    ("\n").join('#include "%s"' % header for header in ROOT_HEADERS),
     include_dirs=[
         include_dir,
         smpt_include_path1,
@@ -607,485 +219,57 @@ ffi.set_source(
         smpt_include_path3,
         smpt_include_path4,
     ],
-    libraries=libraries,
-    library_dirs=library_dirs,
-    extra_compile_args=extra_compile_args,
-    extra_link_args=extra_link_args,
-    # Use py_limited_api to avoid symbol name issues when using static linking
-    py_limited_api=False,
+    libraries=["smpt"],
+    library_dirs=["./lib"],
 )
-
 
 pycparser_args = {"use_cpp": True, "cpp_args": DEFINE_ARGS}
 
+# Platform-specific CPP path setup (simplified from original)
+if sys.platform.startswith("win"):  # windows
+    mingw_path = os.getenv("MINGW_PATH", default="D:\\Qt\\Tools\\mingw530_32")
+    pycparser_args["cpp_path"] = "{}\\bin\\cpp.exe".format(mingw_path)
 
-def find_preprocessor():
-    """Find the best available C preprocessor for the current platform."""
-    import shutil
-
-    # Platform-specific preprocessor candidates
-    if platform.system() == "Windows":
-        cpp_candidates = [
-            "cpp",  # Standard name
-            "gcc",  # Use gcc as preprocessor
-            "clang",  # Use clang as preprocessor
-            "cl",  # MSVC compiler
-        ]
-    elif platform.system() == "Darwin":
-        cpp_candidates = [
-            "cpp",  # Standard name
-            "clang",  # Default on macOS
-            "/usr/bin/cpp",  # System cpp
-            "/usr/bin/clang",  # System clang
-            "gcc",  # Homebrew/MacPorts gcc
-            "/opt/homebrew/bin/cpp",  # Homebrew on Apple Silicon
-            "/usr/local/bin/cpp",  # Homebrew on Intel
-        ]
-    else:  # Linux and other Unix-like
-        cpp_candidates = [
-            "cpp",  # Standard name
-            "gcc",  # Use gcc as preprocessor
-            "clang",  # Use clang as preprocessor
-            "/usr/bin/cpp",  # System cpp
-        ]
-
-    cpp_info = None
-    for candidate in cpp_candidates:
-        cpp_path = shutil.which(candidate)
-        if cpp_path:
-            print(f"Found C preprocessor: {cpp_path}")
-            cpp_info = {"path": cpp_path, "name": candidate}
-            break
-
-    return cpp_info
-
-
-def setup_pycparser_args():
-    """Setup pycparser arguments based on platform and available preprocessor."""
-    cpp_info = find_preprocessor()
-
-    if cpp_info:
-        if platform.system() == "Windows" and cpp_info["name"] == "cl":
-            # MSVC needs special handling - use /EP flag for preprocessing only
-            return {
-                "use_cpp": True,
-                "cpp_path": cpp_info["path"],
-                "cpp_args": ["/EP"]
-                + [
-                    arg.replace("-D", "/D").replace("-I", "/I")
-                    for arg in DEFINE_ARGS
-                    if not arg.startswith("-L")
-                ],
-            }
-        elif platform.system() == "Darwin":
-            # macOS-specific cpp arguments to avoid common issues
-            darwin_args = []
-            for arg in DEFINE_ARGS:
-                # Skip problematic arguments that cause issues on macOS
-                if not any(
-                    skip in arg
-                    for skip in [
-                        "__STDC_VERSION__",  # Let compiler define this
-                        "-mmacosx-version-min",  # Not needed for preprocessing
-                        "-arch",  # Architecture flags not needed
-                    ]
-                ):
-                    darwin_args.append(arg)
-
-            return {
-                "use_cpp": True,
-                "cpp_path": cpp_info["path"],
-                "cpp_args": darwin_args,
-            }
-        else:
-            # Standard Unix-like systems
-            return {
-                "use_cpp": True,
-                "cpp_path": cpp_info["path"],
-                "cpp_args": DEFINE_ARGS,
-            }
-    else:
-        # No preprocessor found - platform-specific fallbacks
-        print(
-            f"Warning: No C preprocessor found on {platform.system()}. Using alternative parsing method."
-        )
-
-        if platform.system() == "Windows":
-            return {
-                "use_cpp": False,
-                "cpp_args": [
-                    "-Iutils/fake_libc_include",
-                    "-Iutils/fake_windows_include",
-                ],
-            }
-        else:
-            # Unix-like systems fallback
-            return {
-                "use_cpp": False,
-                "cpp_args": [
-                    "-Iutils/fake_libc_include",
-                ],
-            }
-
-
-# Setup platform-appropriate pycparser arguments
-pycparser_args = setup_pycparser_args()
-
-
-def preprocess_header_manually(header_path):
-    """Manually preprocess a header file by expanding simple #define statements.
-
-    This is a fallback for when no C preprocessor is available.
-    This version is much more conservative to preserve header structure.
-    """
-    with open(header_path, "r", encoding="utf-8", errors="ignore") as f:
-        content = f.read()
-
-    # Remove C-style comments (/* ... */) to avoid pycparser confusion
-    # Handle multi-line comments properly
-    import re
-
-    # Remove /* ... */ style comments (including multi-line)
-    content = re.sub(r"/\*.*?\*/", "", content, flags=re.DOTALL)
-    # Remove // style comments
-    content = re.sub(r"//.*", "", content)
-
-    # Very conservative preprocessing - only fix things that definitely break pycparser
-    # Don't mess with complex #define statements or conditional compilation
-
-    # Handle _Bool arrays specifically for compatibility
-    # Replace _Bool arrays with unsigned char arrays to fix CFFI type issues
-    content = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", content)
-    content = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", content)
-
-    # With improved header guards, we can use consistent bool handling across platforms
-    if platform.system() == "Windows":
-        asm_definition = "#define __asm__"
-    else:
-        asm_definition = "#define __asm__(...)"
-
-    bool_definitions = """
-#ifndef _Bool
-typedef unsigned char _Bool;
-#endif
-#ifndef bool
-#define bool unsigned char
-#define true 1
-#define false 0
-#endif
-"""
-
-    essential_types = f"""
-/* Minimal essential types for pycparser - don't redefine __STDC_VERSION__ */
-{bool_definitions}
-
-/* Define common GCC attributes away */
-#define __attribute__(x)
-#define __restrict
-#define __extension__
-#define __inline
-#define __always_inline
-#define __builtin_va_list char*
-{asm_definition}
-
-"""
-    content = essential_types + content
-
-    return content
-
+print("Starting CFFI parsing with simplified approach...")
 
 collector = Collector()
-parse_success = False
-
-
-def try_parse_with_better_args(header_path, header_name):
-    """Try parsing with progressively more aggressive fallback options."""
-
-    # Build comprehensive include paths for all subdirectories
-    include_paths = [
-        f"-I{include_dir}",
-        f"-I{include_dir}/general",
-        f"-I{include_dir}/general/packet",
-        f"-I{include_dir}/low-level",
-        f"-I{include_dir}/mid-level",
-        f"-I{include_dir}/dyscom-level",
-    ]
-
-    # Platform-specific preprocessor argument handling
-    if platform.system() == "Windows":
-        asm_definition = "-D__asm__="
-        platform_definitions = [
-            "-D__declspec(x)=",
-            "-D_WIN32=1",
-            "-DWIN32=1",
-            "-D_WINDOWS=1",
-            "-D_MSC_VER=1900",  # Simulate recent MSVC
-            "-D_MSC_FULL_VER=190000000",
-            "-D__forceinline=inline",
-            "-D__inline=inline",
-            # Ensure Windows structure definitions are consistent
-            "-DSMPT_EXPORTS",  # This might affect how structures are defined
-        ]
-    elif platform.system() == "Darwin":
-        asm_definition = "-D__asm__(...)="
-        platform_definitions = [
-            "-D__APPLE__=1",
-            "-D__MACH__=1",
-            "-D__attribute__(x)=",
-            "-D__declspec(x)=",
-            "-D__builtin_available(...)=1",  # macOS availability checks
-        ]
-    else:  # Linux and other Unix-like
-        asm_definition = "-D__asm__(...)="
-        platform_definitions = [
-            "-D__linux__=1",
-            "-D__GNUC__=7",  # Simulate GCC 7+
-            "-D__attribute__(x)=",
-            "-D__declspec(x)=",
-        ]
-
-    # Platform-specific bool handling
-    if platform.system() == "Windows":
-        bool_definitions = [
-            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion conflicts
-            "-D__STDBOOL_H",  # Additional header guard
-        ]
-    else:
-        bool_definitions = [
-            "-D_Bool=unsigned char",
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
-        ]
-
-    # Common definitions that work across platforms
-    common_definitions = [
-        "-D__restrict=",
-        "-D__extension__=",
-        "-D__inline=",
-        "-D__always_inline=",
-        "-D__builtin_va_list=char*",
-        "-D__signed__=signed",
-        "-D__const=const",
-        "-D__volatile__=volatile",
-        "-DSMPT_API=",
-        "-DSMPT_EXPORTS=",
-        "-DSMPT_DLL=",
-        "-DUC_MAIN=",
-        "-D__bool_true_false_are_defined=1",
-    ]
-
-    parsing_attempts = [
-        # Primary approach: use cpp with optimized args
-        {
-            "use_cpp": True,
-            "cpp_args": include_paths
-            + bool_definitions
-            + platform_definitions
-            + common_definitions
-            + [asm_definition],
-        },
-        # Fallback 1: cpp with minimal args only
-        {
-            "use_cpp": True,
-            "cpp_args": include_paths
-            + bool_definitions
-            + [
-                "-D__attribute__(x)=",
-                "-D__declspec(x)=",
-                "-DSMPT_API=",
-                "-DSMPT_EXPORTS=",
-                "-DSMPT_DLL=",
-            ],
-        },
-        # Fallback 2: no cpp at all
-        {
-            "use_cpp": False,
-        },
-    ]
-
-    # For macOS, add a special attempt with reduced definitions to avoid conflicts
-    if platform.system() == "Darwin":
-        macos_minimal_attempt = {
-            "use_cpp": True,
-            "cpp_args": include_paths
-            + bool_definitions
-            + [
-                "-D__attribute__(x)=",
-                "-D__declspec(x)=",
-                "-DSMPT_API=",
-                "-D__asm__(...)=",
-                # Skip version-specific definitions that may conflict
-            ],
-        }
-        # Insert this attempt as the second option
-        parsing_attempts.insert(1, macos_minimal_attempt)
-
-    for i, args in enumerate(parsing_attempts):
-        try:
-            print(
-                f"  Attempt {i + 1}: {'with cpp' if args.get('use_cpp') else 'without cpp'}"
-            )
-            ast = pycparser.parse_file(header_path, **args)
-            collector.visit(ast)
-            print(f"Successfully parsed {header_name} (attempt {i + 1})")
-            return True
-        except Exception as e:
-            print(f"  Attempt {i + 1} failed: {e}")
-            continue
-
-    return False
-
-
 for header in ROOT_HEADERS:
-    header_path = os.sep.join([include_dir, header])
-    header_parsed = False
-
     print(f"Parsing {header}...")
-
-    # Try standard parsing approaches
-    header_parsed = try_parse_with_better_args(header_path, header)
-
-    # Manual preprocessing as last resort
-    if not header_parsed:
-        try:
-            print(f"  Final attempt: manual preprocessing for {header}...")
-            import tempfile
-
-            processed_content = preprocess_header_manually(header_path)
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".h", delete=False, encoding="utf-8"
-            ) as tmp:
-                tmp.write(processed_content)
-                tmp.flush()
-
-                try:
-                    ast = pycparser.parse_file(tmp.name, use_cpp=False)
-                    collector.visit(ast)
-                    header_parsed = True
-                    print(f"Successfully parsed {header} with manual preprocessing")
-                except Exception as e:
-                    print(f"  Manual preprocessing also failed for {header}: {e}")
-                finally:
-                    # Clean up temp file
-                    import os
-
-                    try:
-                        os.unlink(tmp.name)
-                    except:
-                        pass
-        except Exception as e:
-            print(f"Error during manual preprocessing for {header}: {e}")
-
-    if header_parsed:
-        parse_success = True
-    else:
-        print(f"Skipping {header} - continuing with other headers...")
-
-# If no headers could be parsed, provide minimal interface
-if not parse_success:
-    print("Warning: Could not parse any headers. Providing minimal CFFI interface.")
-    # Add minimal essential types that tests expect with instantiable field definitions
-    # These provide enough structure for basic testing while being safe to instantiate
-    # Updated to match actual C structure definitions
-    # If header parsing completely failed, provide minimal essential structures
-    # that are required for basic functionality - but make sure they match the real headers!
-    collector.typedecls.extend(
-        [
-            # Minimal device structure - matches the actual Smpt_device structure
-            """typedef struct {
-                unsigned int packet_length;
-                unsigned char packet[1200];
-                struct {
-                    unsigned int acks_length;
-                    unsigned int acks_current_index; 
-                    struct {
-                        unsigned char packet_number;
-                        unsigned short command_number;
-                        unsigned char result;
-                    } acks[100];
-                    unsigned int requests_current_index;
-                    unsigned int requests_expected_index;
-                    unsigned int number_of_expected;
-                    struct {
-                        unsigned char packet_number;
-                        unsigned short command_number;
-                    } requests[100];
-                    unsigned int new_ack_available;
-                } cmd_list;
-                signed char current_packet_number;
-                char serial_port_name[256];
-                unsigned char packet_input_buffer_data[120000];
-                unsigned char packet_input_buffer_state[100];
-            } Smpt_device;""",
-            # Basic low-level init structure (matches actual Smpt_ll_init)
-            """typedef struct {
-                unsigned char measurement_type;
-                unsigned char high_voltage_level;
-                unsigned char packet_number;
-            } Smpt_ll_init;""",
-            # Channel configuration structure (matches actual Smpt_ll_channel_config)
-            """typedef struct {
-                unsigned char enable_stimulation;
-                unsigned char channel;
-                unsigned char connector;
-                unsigned char number_of_points;
-                struct {
-                    unsigned short time;
-                    float current;
-                    unsigned char interpolation_mode;
-                } points[16];
-                unsigned char packet_number;
-            } Smpt_ll_channel_config;""",
-            # Generic acknowledgment structure (matches actual Smpt_ack)
-            """typedef struct {
-                unsigned char packet_number;
-                unsigned short command_number;
-                unsigned char result;
-            } Smpt_ack;""",
-        ]
-    )
-    collector.functions.extend(
-        [
-            "bool smpt_open_serial_port(Smpt_device *const device, const char *const device_name);",
-            "bool smpt_close_serial_port(Smpt_device *const device);",
-            "bool smpt_check_serial_port(const char *const device_name);",
-            "unsigned char smpt_packet_number_generator_next(Smpt_device *const device);",
-            "bool smpt_new_packet_received(Smpt_device *const device);",
-            "void smpt_last_ack(Smpt_device *const device, Smpt_ack *const ack);",
-        ]
-    )
+    try:
+        ast = pycparser.parse_file(os.sep.join([include_dir, header]), **pycparser_args)
+        collector.visit(ast)
+        print(f"✅ Successfully parsed {header}")
+    except Exception as e:
+        print(f"❌ Failed to parse {header}: {e}")
+        # Don't continue with broken parsing - this should work
+        raise
 
 defines = set()
-
-# Don't manually add constants - let them be parsed from headers naturally
-# This prevents issues with conditional compilation and macro redefinition
-
 for header_path in HEADERS:
-    header_full_path = os.sep.join([include_dir, header_path])
-    if os.path.exists(header_full_path):
-        with open(header_full_path, encoding="utf-8", errors="ignore") as header_file:
-            header = header_file.read()
-            for match in DEFINE_PATTERN.finditer(header):
-                if (
-                    match.group(1) in DEFINE_BLACKLIST
-                    or match.group(1) in collector.typedecls
-                    or match.group(1) in collector.functions
-                ):
-                    continue
-                try:
-                    int(match.group(2), 0)
-                    defines.add(f"#define {match.group(1)} {match.group(2)}")
-                except Exception:
-                    defines.add(f"#define {match.group(1)} ...")
+    with open(os.sep.join([include_dir, header_path]), "r") as header_file:
+        header = header_file.read()
+        for match in DEFINE_PATTERN.finditer(header):
+            if (
+                match.group(1) in DEFINE_BLACKLIST
+                or match.group(1) in collector.typedecls
+                or match.group(1) in collector.functions
+            ):
+                continue
+            try:
+                int(match.group(2), 0)
+                defines.add("#define {} {}".format(match.group(1), match.group(2)))
+            except:
+                defines.add("#define {} ...".format(match.group(1)))
+
 print(
-    f"Processing {len(defines)} defines, {len(collector.typedecls)} types, "
-    f"{len(collector.functions)} functions"
+    "Processing {} defines, {} types, {} functions".format(
+        len(defines), len(collector.typedecls), len(collector.functions)
+    )
 )
 
 cdef = "\n".join(itertools.chain(*[defines, collector.typedecls, collector.functions]))
 
-# Post-process the cdef to fix any remaining compatibility issues
+# Simple, reliable string replacements from original
 cdef = cdef.replace("[Smpt_Length_Max_Packet_Size]", "[1200]")
 cdef = cdef.replace("[Smpt_Length_Packet_Input_Buffer_Rows]", "[100]")
 cdef = cdef.replace(
@@ -1097,239 +281,16 @@ cdef = cdef.replace("[Smpt_Length_Device_Id]", "[10]")
 cdef = cdef.replace("[Smpt_Length_Points]", "[16]")
 cdef = cdef.replace("[Smpt_Length_Number_Of_Channels]", "[8]")
 
-# Final cleanup: ensure all _Bool arrays are converted to unsigned char arrays
-# This handles any cases that might have been missed during parsing
+# Fix _Bool array compatibility issues by converting to unsigned char arrays
+# This matches what the headers use and prevents CFFI type conflicts
 cdef = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 cdef = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 
-# Fix enum values that were sanitized but need real values for CFFI
-# Replace sanitized Smpt_Result enum with explicit values
-smpt_result_enum = """typedef enum {
-    Smpt_Result_Successful = 0,
-    Smpt_Result_Transfer_Error = 1,
-    Smpt_Result_Parameter_Error = 2,
-    Smpt_Result_Protocol_Error = 3,
-    Smpt_Result_Uc_Stim_Timeout_Error = 4,
-    Smpt_Result_Emg_Timeout_Error = 5,
-    Smpt_Result_Emg_Register_Error = 6,
-    Smpt_Result_Not_Initialized_Error = 7,
-    Smpt_Result_Hv_Error = 8,
-    Smpt_Result_Demux_Timeout_Error = 9,
-    Smpt_Result_Electrode_Error = 10,
-    Smpt_Result_Invalid_Cmd_Error = 11,
-    Smpt_Result_Demux_Parameter_Error = 12,
-    Smpt_Result_Demux_Not_Initialized_Error = 13,
-    Smpt_Result_Demux_Transfer_Error = 14,
-    Smpt_Result_Demux_Unknown_Ack_Error = 15,
-    Smpt_Result_Pulse_Timeout_Error = 16,
-    Smpt_Result_Fuel_Gauge_Error = 17,
-    Smpt_Result_Live_Signal_Error = 18,
-    Smpt_Result_File_Transmission_Timeout = 19,
-    Smpt_Result_File_Not_Found = 20,
-    Smpt_Result_Busy = 21,
-    Smpt_Result_File_Error = 22,
-    Smpt_Result_Flash_Erase_Error = 23,
-    Smpt_Result_Flash_Write_Error = 24,
-    Smpt_Result_Unknown_Controller_Error = 25,
-    Smpt_Result_Firmware_Too_Large_Error = 26,
-    Smpt_Result_Fuel_Gauge_Not_Programmed = 27,
-    Smpt_Result_Pulse_Low_Current_Error = 28,
-    Smpt_Result_Last_Item = 29
-} Smpt_Result;"""
+ffi.cdef(cdef)
 
-# Replace the sanitized enum with explicit values
-import re
+print("✅ CFFI configuration completed successfully!")
 
-cdef = re.sub(
-    r"typedef enum\s*\{[^}]*Smpt_Result_Successful\s*=\s*\.\.\.[^}]*\}\s*Smpt_Result;",
-    smpt_result_enum,
-    cdef,
-    flags=re.DOTALL,
-)
-
-# Fix platform-specific field errors
-if "serial_port_handle_" in cdef and not sys.platform.startswith("win"):
-    # Remove the Windows-specific field for non-Windows platforms
-    cdef = cdef.replace(
-        "HANDLE serial_port_handle_;", "/* Windows only: HANDLE serial_port_handle_; */"
-    )
-elif "serial_port_descriptor" in cdef and sys.platform.startswith("win"):
-    # Remove the Linux/macOS field for Windows
-    cdef = cdef.replace(
-        "int serial_port_descriptor;",
-        "/* Linux/macOS only: int serial_port_descriptor; */",
-    )
-
-
-# Define the CFFI interface with the combined definitions
-# Use override=True to handle duplicate definitions
-ffi.cdef(cdef, override=True)
-
-
-# Create a context manager class for managing CFFI resources
-class CFFIResourceManager:
-    """Context manager for CFFI resources to ensure proper cleanup."""
-
-    def __init__(self, resource, destructor=None):
-        """Initialize with a CFFI resource and optional destructor function.
-
-        Args:
-            resource: CFFI resource to manage
-            destructor: Optional function to call for cleanup
-        """
-        self.resource = resource
-        self.destructor = destructor
-
-    def __enter__(self):
-        """Return the resource when entering the context."""
-        return self.resource
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Release the resource when exiting the context."""
-        if self.destructor and self.resource:
-            try:
-                self.destructor(self.resource)
-            except Exception as e:
-                print(f"Error during resource cleanup: {e}")
-        elif hasattr(ffi, "release") and self.resource:
-            try:
-                ffi.release(self.resource)
-            except Exception as e:
-                print(f"Error releasing resource: {e}")
-        self.resource = None
-        return False  # Don't suppress exceptions
-
-
-# Memory management helpers
-def managed_new(ctype, init=None, destructor=None, size=0):
-    """Create a new CFFI object with automatic memory management.
-
-    Args:
-        ctype: C type to allocate
-        init: Initial value
-        destructor: Custom destructor function (optional)
-        size: Size hint for garbage collector (optional)
-
-    Returns:
-        CFFI object with garbage collection
-    """
-    if init is not None:
-        obj = ffi.new(ctype, init)
-    else:
-        obj = ffi.new(ctype)
-
-    if destructor:
-        return ffi.gc(obj, destructor, size)
-    return obj
-
-
-def managed_buffer(cdata, size=None):
-    """Create a managed buffer from CFFI data.
-
-    Args:
-        cdata: CFFI data to create buffer from
-        size: Size of the buffer in bytes (optional)
-
-    Returns:
-        A context manager that yields a buffer object
-    """
-    buf = ffi.buffer(cdata, size)
-    return CFFIResourceManager(buf)
-
-
-# Function to get the library configuration, initialized only once
-def get_smpt_config():
-    """Get the SMPT library configuration, initializing it only once.
-
-    Returns:
-        dict: Configuration dictionary with paths and platform info
-    """
-    return ffi.init_once(_init_smpt_lib, "smpt_init")
-
-
-# String conversion utilities
-def to_bytes(value):
-    """Convert a Python string or bytes to bytes object.
-
-    Args:
-        value: String or bytes to convert
-
-    Returns:
-        bytes: Python bytes object
-    """
-    if isinstance(value, str):
-        return value.encode("utf-8")
-    elif isinstance(value, bytes):
-        return value
-    else:
-        return str(value).encode("utf-8")
-
-
-def from_cstring(cdata):
-    """Convert a C string to a Python string.
-
-    Args:
-        cdata: CFFI char* data
-
-    Returns:
-        str: Python string
-    """
-    if cdata == ffi.NULL:
-        return None
-
-    # Get the C string as bytes first
-    byte_str = ffi.string(cdata)
-
-    # Convert to Python string
-    if isinstance(byte_str, bytes):
-        return byte_str.decode("utf-8", errors="replace")
-    return byte_str  # Already a string in Python 3
-
-
-def to_c_array(data_type, py_list):
-    """Convert a Python list to a C array of the specified type.
-
-    Args:
-        data_type: C data type (e.g., "int[]")
-        py_list: Python list to convert
-
-    Returns:
-        CFFI array object
-    """
-    if not py_list:
-        return ffi.NULL
-
-    arr = ffi.new(data_type, len(py_list))
-    for i, value in enumerate(py_list):
-        arr[i] = value
-
-    return arr
-
-
-def from_c_array(cdata, length, item_type=None):
-    """Convert a C array to a Python list.
-
-    Args:
-        cdata: CFFI array data
-        length: Length of the array
-        item_type: Optional type conversion function
-
-    Returns:
-        list: Python list with array contents
-    """
-    if cdata == ffi.NULL or length <= 0:
-        return []
-
-    result = [cdata[i] for i in range(length)]
-
-    if item_type:
-        result = [item_type(item) for item in result]
-
-    return result
-
-
-# Debugging feature: Write the generated C definitions to a file
-# This can be enabled for troubleshooting CFFI binding issues
+# Optional: save for debugging
 if False:
     file = open("sciencemode.cdef", "w")
     file.write(cdef)
