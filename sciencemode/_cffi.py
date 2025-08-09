@@ -187,10 +187,8 @@ DEFINE_ARGS = (
             "-D__declspec(x)=",
             "-D__forceinline=",
             "-D__inline=",
-            # On Windows, prevent stdbool.h inclusion and define bool consistently
+            # With improved header guards, we can use consistent bool handling
             "-D_Bool=unsigned char",
-            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion
-            "-D__STDBOOL_H",  # Alternative stdbool.h guard
             "-Dbool=unsigned char",
             "-Dtrue=1",
             "-Dfalse=0",
@@ -198,11 +196,12 @@ DEFINE_ARGS = (
         if sys.platform.startswith("win")
         else [
             "-U_MSC_VER",
-            # More conservative approach: only define what's essential for pycparser
-            # Let the headers handle their own bool logic to avoid preprocessor conflicts
+            # With improved header guards, we can use consistent bool handling across platforms
             "-D_Bool=unsigned char",
-            # Don't override bool/true/false - let headers handle them
-            # This prevents conflicts with conditional compilation in headers
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
+            "-D__bool_true_false_are_defined=1",
         ]
     )
     + [
@@ -480,13 +479,15 @@ extra_compile_args = ["-DSMPT_STATIC"]
 
 # Add the same type definitions to compile args as we use for parsing
 # This ensures consistency between parsing and compilation
-# On Windows, avoid redefining bool to prevent conflicts with MSVC's stdbool.h
-if not platform.system().startswith("win"):
+# With improved header guards, we can use consistent bool handling across platforms
+if platform.system() != "Windows":
     extra_compile_args.extend(
         [
             "-D_Bool=unsigned char",
-            # More conservative: let the headers handle bool/true/false
-            # Only define what's essential to avoid preprocessor conflicts
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
+            "-D__bool_true_false_are_defined=1",
         ]
     )
 else:
@@ -643,20 +644,13 @@ def preprocess_header_manually(header_path):
     content = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", content)
     content = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", content)
 
-    # Only add the most essential type definitions that pycparser needs
-    # Don't redefine __STDC_VERSION__ - that causes the macOS redefinition warning
+    # With improved header guards, we can use consistent bool handling across platforms
     if platform.system() == "Windows":
         asm_definition = "#define __asm__"
-        # On Windows, prevent stdbool.h inclusion and define bool consistently
-        bool_definitions = """
-/* Prevent stdbool.h inclusion */
-#ifndef _STDBOOL_H
-#define _STDBOOL_H 1
-#endif
-#ifndef __STDBOOL_H
-#define __STDBOOL_H 1
-#endif
+    else:
+        asm_definition = "#define __asm__(...)"
 
+    bool_definitions = """
 #ifndef _Bool
 typedef unsigned char _Bool;
 #endif
@@ -665,15 +659,6 @@ typedef unsigned char _Bool;
 #define true 1
 #define false 0
 #endif
-"""
-    else:
-        asm_definition = "#define __asm__(...)"
-        bool_definitions = """
-#ifndef _Bool
-typedef unsigned char _Bool;
-#endif
-
-/* More conservative: let headers handle bool/true/false to avoid conflicts */
 """
 
     essential_types = f"""
@@ -712,26 +697,18 @@ def try_parse_with_better_args(header_path, header_name):
         f"-I{include_dir}/dyscom-level",
     ]
 
-    # Platform-specific __asm__ definition and bool handling
+    # With improved header guards, we can use consistent bool handling across platforms
     if platform.system() == "Windows":
         asm_definition = "-D__asm__="
-        # On Windows, prevent stdbool.h inclusion and define bool consistently
-        bool_definitions = [
-            "-D_Bool=unsigned char",
-            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion
-            "-D__STDBOOL_H",  # Alternative stdbool.h guard
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
-        ]
     else:
         asm_definition = "-D__asm__(...)="
-        bool_definitions = [
-            "-D_Bool=unsigned char",
-            # Let the headers handle their own bool/true/false definitions
-            # to avoid conflicts with conditional compilation
-            # Only define essentials for pycparser compatibility
-        ]
+
+    bool_definitions = [
+        "-D_Bool=unsigned char",
+        "-Dbool=unsigned char",
+        "-Dtrue=1",
+        "-Dfalse=0",
+    ]
 
     parsing_attempts = [
         # Primary approach: use cpp with optimized args but NO fake libc
