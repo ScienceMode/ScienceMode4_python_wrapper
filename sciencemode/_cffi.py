@@ -187,6 +187,9 @@ DEFINE_ARGS = (
             "-D__declspec(x)=",
             "-D__forceinline=",
             "-D__inline=",
+            # On Windows, avoid redefining bool to prevent conflicts with MSVC stdbool.h
+            "-D_Bool=unsigned char",
+            # Don't redefine bool/true/false - let MSVC handle it
         ]
         if sys.platform.startswith("win")
         else [
@@ -477,6 +480,7 @@ extra_compile_args = ["-DSMPT_STATIC"]
 
 # Add the same type definitions to compile args as we use for parsing
 # This ensures consistency between parsing and compilation
+# On Windows, avoid redefining bool to prevent conflicts with MSVC's stdbool.h
 if not platform.system().startswith("win"):
     extra_compile_args.extend(
         [
@@ -485,6 +489,15 @@ if not platform.system().startswith("win"):
             "-Dtrue=1",
             "-Dfalse=0",
             "-D__bool_true_false_are_defined=1",
+        ]
+    )
+else:
+    # On Windows with MSVC, let the compiler handle bool definitions
+    # Only define _Bool for consistency in parsing
+    extra_compile_args.extend(
+        [
+            "-D_Bool=unsigned char",
+            # Don't redefine bool/true/false on Windows to avoid conflicts
         ]
     )
 
@@ -632,11 +645,15 @@ def preprocess_header_manually(header_path):
     # Don't redefine __STDC_VERSION__ - that causes the macOS redefinition warning
     if platform.system() == "Windows":
         asm_definition = "#define __asm__"
+        # On Windows, be more careful with bool to avoid MSVC conflicts
+        bool_definitions = """
+#ifndef _Bool
+typedef unsigned char _Bool;
+#endif
+"""
     else:
         asm_definition = "#define __asm__(...)"
-
-    essential_types = f"""
-/* Minimal essential types for pycparser - don't redefine __STDC_VERSION__ */
+        bool_definitions = """
 #ifndef __bool_true_false_are_defined
 #define __bool_true_false_are_defined 1
 typedef unsigned char _Bool;
@@ -649,6 +666,11 @@ typedef unsigned char _Bool;
 #define false 0
 #endif
 #endif
+"""
+
+    essential_types = f"""
+/* Minimal essential types for pycparser - don't redefine __STDC_VERSION__ */
+{bool_definitions}
 
 /* Define common GCC attributes away */
 #define __attribute__(x)
@@ -682,23 +704,31 @@ def try_parse_with_better_args(header_path, header_name):
         f"-I{include_dir}/dyscom-level",
     ]
 
-    # Platform-specific __asm__ definition
+    # Platform-specific __asm__ definition and bool handling
     if platform.system() == "Windows":
         asm_definition = "-D__asm__="
+        # On Windows, be more careful with bool definitions to avoid MSVC conflicts
+        bool_definitions = [
+            "-D_Bool=unsigned char",
+            # Don't redefine bool on Windows to avoid MSVC stdbool.h conflicts
+        ]
     else:
         asm_definition = "-D__asm__(...)="
+        bool_definitions = [
+            "-D_Bool=unsigned char",
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
+        ]
 
     parsing_attempts = [
         # Primary approach: use cpp with optimized args but NO fake libc
         {
             "use_cpp": True,
             "cpp_args": include_paths
+            + bool_definitions
             + [
                 # Essential definitions without fake libc that causes issues
-                "-D_Bool=unsigned char",  # Use unsigned char instead of char for better compatibility
-                "-Dbool=unsigned char",
-                "-Dtrue=1",
-                "-Dfalse=0",
                 "-D__attribute__(x)=",
                 "-D__restrict=",
                 "-D__extension__=",
@@ -724,11 +754,8 @@ def try_parse_with_better_args(header_path, header_name):
         {
             "use_cpp": True,
             "cpp_args": include_paths
+            + bool_definitions
             + [
-                "-D_Bool=unsigned char",
-                "-Dbool=unsigned char",
-                "-Dtrue=1",
-                "-Dfalse=0",
                 "-D__attribute__(x)=",
                 "-D__declspec(x)=",  # Define away Windows __declspec
                 "-DSMPT_API=",  # Define away SMPT_API
@@ -809,27 +836,30 @@ if not parse_success:
     print("Warning: Could not parse any headers. Providing minimal CFFI interface.")
     # Add minimal essential types that tests expect with instantiable field definitions
     # These provide enough structure for basic testing while being safe to instantiate
+    # Updated to match actual C structure definitions
     collector.typedecls.extend(
         [
-            # Basic device structure with essential fields
+            # Basic device structure with essential fields (matches actual Smpt_device)
             """typedef struct {
                 int file_descriptor;
                 char device_name[256];
                 unsigned char packet_number;
-                char _padding[64];
+                unsigned char is_connection_established;
+                unsigned char is_version_ack_received;
+                unsigned char last_packet_number_received;
             } Smpt_device;""",
             # Basic low-level init structure
             """typedef struct {
                 unsigned char packet_number; 
                 unsigned char electrode_count;
-                char _padding[16];
+                unsigned char reserved[14];
             } Smpt_ll_init;""",
             # Channel configuration structure
             """typedef struct {
                 unsigned char channel_number;
                 unsigned char pulse_width;
                 unsigned char current;
-                char _padding[16];
+                unsigned char reserved[13];
             } Smpt_ll_channel_config;""",
             # Version acknowledgment structure
             """typedef struct {
@@ -838,14 +868,14 @@ if not parse_success:
                 unsigned char version_minor;
                 unsigned char version_patch;
                 char version_string[64];
-                char _padding[16];
+                unsigned char reserved[16];
             } Smpt_get_extended_version_ack;""",
-            # Generic acknowledgment structure
+            # Generic acknowledgment structure (matches actual Smpt_ack)
             """typedef struct {
                 unsigned char packet_number;
                 unsigned char command_number;
                 unsigned char result;
-                char _padding[16];
+                unsigned char reserved[13];
             } Smpt_ack;""",
         ]
     )
