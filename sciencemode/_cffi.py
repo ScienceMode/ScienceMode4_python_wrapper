@@ -499,13 +499,9 @@ else:
     # On Windows with MSVC, prevent stdbool.h inclusion and define bool consistently
     extra_compile_args.extend(
         [
-            "-D_Bool=unsigned char",
             "-D_STDBOOL_H",  # Prevent stdbool.h inclusion
             "-D__STDBOOL_H",  # Alternative stdbool.h guard
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
-            "-D__bool_true_false_are_defined=1",
+            # Don't define bool macros on Windows - let the compiler handle it
         ]
     )
 
@@ -848,12 +844,19 @@ def try_parse_with_better_args(header_path, header_name):
             "-D__declspec(x)=",
         ]
 
-    bool_definitions = [
-        "-D_Bool=unsigned char",
-        "-Dbool=unsigned char",
-        "-Dtrue=1",
-        "-Dfalse=0",
-    ]
+    # Platform-specific bool handling
+    if platform.system() == "Windows":
+        bool_definitions = [
+            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion conflicts
+            "-D__STDBOOL_H",  # Additional header guard
+        ]
+    else:
+        bool_definitions = [
+            "-D_Bool=unsigned char",
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
+        ]
 
     # Common definitions that work across platforms
     common_definitions = [
@@ -1015,18 +1018,24 @@ if not parse_success:
                 unsigned char packet_input_buffer_data[120000];
                 unsigned char packet_input_buffer_state[100];
             } Smpt_device;""",
-            # Basic low-level init structure
+            # Basic low-level init structure (matches actual Smpt_ll_init)
             """typedef struct {
-                unsigned char packet_number; 
-                unsigned char electrode_count;
-                unsigned char reserved[14];
+                unsigned char measurement_type;
+                unsigned char high_voltage_level;
+                unsigned char packet_number;
             } Smpt_ll_init;""",
-            # Channel configuration structure
+            # Channel configuration structure (matches actual Smpt_ll_channel_config)
             """typedef struct {
-                unsigned char channel_number;
-                unsigned char pulse_width;
-                unsigned char current;
-                unsigned char reserved[13];
+                unsigned char enable_stimulation;
+                unsigned char channel;
+                unsigned char connector;
+                unsigned char number_of_points;
+                struct {
+                    unsigned short time;
+                    float current;
+                    unsigned char interpolation_mode;
+                } points[16];
+                unsigned char packet_number;
             } Smpt_ll_channel_config;""",
             # Generic acknowledgment structure (matches actual Smpt_ack)
             """typedef struct {
