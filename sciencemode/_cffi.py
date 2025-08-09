@@ -198,15 +198,11 @@ DEFINE_ARGS = (
         if sys.platform.startswith("win")
         else [
             "-U_MSC_VER",
-            # CRITICAL: Define _Bool and bool consistently for BOTH parsing and compilation
-            # This ensures that when CFFI compiles the C extension, it sees the same
-            # type definitions that we used during parsing
+            # More conservative approach: only define what's essential for pycparser
+            # Let the headers handle their own bool logic to avoid preprocessor conflicts
             "-D_Bool=unsigned char",
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
-            # Override stdbool.h to prevent inconsistencies
-            "-D__bool_true_false_are_defined=1",
+            # Don't override bool/true/false - let headers handle them
+            # This prevents conflicts with conditional compilation in headers
         ]
     )
     + [
@@ -489,10 +485,8 @@ if not platform.system().startswith("win"):
     extra_compile_args.extend(
         [
             "-D_Bool=unsigned char",
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
-            "-D__bool_true_false_are_defined=1",
+            # More conservative: let the headers handle bool/true/false
+            # Only define what's essential to avoid preprocessor conflicts
         ]
     )
 else:
@@ -675,18 +669,11 @@ typedef unsigned char _Bool;
     else:
         asm_definition = "#define __asm__(...)"
         bool_definitions = """
-#ifndef __bool_true_false_are_defined
-#define __bool_true_false_are_defined 1
+#ifndef _Bool
 typedef unsigned char _Bool;
 #endif
 
-#ifndef __cplusplus
-#ifndef bool
-#define bool _Bool
-#define true 1
-#define false 0
-#endif
-#endif
+/* More conservative: let headers handle bool/true/false to avoid conflicts */
 """
 
     essential_types = f"""
@@ -741,9 +728,9 @@ def try_parse_with_better_args(header_path, header_name):
         asm_definition = "-D__asm__(...)="
         bool_definitions = [
             "-D_Bool=unsigned char",
-            "-Dbool=unsigned char",
-            "-Dtrue=1",
-            "-Dfalse=0",
+            # Let the headers handle their own bool/true/false definitions
+            # to avoid conflicts with conditional compilation
+            # Only define essentials for pycparser compatibility
         ]
 
     parsing_attempts = [
