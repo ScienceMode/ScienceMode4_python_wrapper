@@ -98,9 +98,8 @@ class BuildCFFIModuleCommand(Command):
                 [sys.executable, cffi_path],
                 cwd=os.path.dirname(cffi_path),
                 check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                universal_newlines=True,
+                capture_output=True,
+                text=True,
             )
             print("Output:")
             print(result.stdout)
@@ -199,9 +198,8 @@ class BuildLibraryCommand(Command):
         try:
             result = subprocess.run(
                 ["cmake", "--version"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                universal_newlines=True,
+                capture_output=True,
+                text=True,
             )
             print(f"Found CMake: {result.stdout.split()[2]}")
         except Exception:
@@ -546,9 +544,8 @@ else:
                         [sys.executable, cffi_path],
                         cwd=os.path.dirname(cffi_path),
                         check=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        universal_newlines=True,
+                        capture_output=True,
+                        text=True,
                     )
                     print("Direct CFFI build result:")
                     print(result.stdout)
