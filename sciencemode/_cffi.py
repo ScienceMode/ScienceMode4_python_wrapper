@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import os
-import platform
 import sys
+
+# Force UTF-8 encoding for all file operations - do this BEFORE any other imports
+if sys.platform.startswith("win"):
+    # On Windows, force UTF-8 encoding for all I/O operations
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+    os.environ["PYTHONUTF8"] = "1"
+
+import platform
 import re
 import itertools
 from cffi import FFI
