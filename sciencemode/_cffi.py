@@ -187,9 +187,13 @@ DEFINE_ARGS = (
             "-D__declspec(x)=",
             "-D__forceinline=",
             "-D__inline=",
-            # On Windows, avoid redefining bool to prevent conflicts with MSVC stdbool.h
+            # On Windows, prevent stdbool.h inclusion and define bool consistently
             "-D_Bool=unsigned char",
-            # Don't redefine bool/true/false - let MSVC handle it
+            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion
+            "-D__STDBOOL_H",  # Alternative stdbool.h guard
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
         ]
         if sys.platform.startswith("win")
         else [
@@ -492,12 +496,16 @@ if not platform.system().startswith("win"):
         ]
     )
 else:
-    # On Windows with MSVC, let the compiler handle bool definitions
-    # Only define _Bool for consistency in parsing
+    # On Windows with MSVC, prevent stdbool.h inclusion and define bool consistently
     extra_compile_args.extend(
         [
             "-D_Bool=unsigned char",
-            # Don't redefine bool/true/false on Windows to avoid conflicts
+            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion
+            "-D__STDBOOL_H",  # Alternative stdbool.h guard
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
+            "-D__bool_true_false_are_defined=1",
         ]
     )
 
@@ -645,10 +653,23 @@ def preprocess_header_manually(header_path):
     # Don't redefine __STDC_VERSION__ - that causes the macOS redefinition warning
     if platform.system() == "Windows":
         asm_definition = "#define __asm__"
-        # On Windows, be more careful with bool to avoid MSVC conflicts
+        # On Windows, prevent stdbool.h inclusion and define bool consistently
         bool_definitions = """
+/* Prevent stdbool.h inclusion */
+#ifndef _STDBOOL_H
+#define _STDBOOL_H 1
+#endif
+#ifndef __STDBOOL_H
+#define __STDBOOL_H 1
+#endif
+
 #ifndef _Bool
 typedef unsigned char _Bool;
+#endif
+#ifndef bool
+#define bool unsigned char
+#define true 1
+#define false 0
 #endif
 """
     else:
@@ -707,10 +728,14 @@ def try_parse_with_better_args(header_path, header_name):
     # Platform-specific __asm__ definition and bool handling
     if platform.system() == "Windows":
         asm_definition = "-D__asm__="
-        # On Windows, be more careful with bool definitions to avoid MSVC conflicts
+        # On Windows, prevent stdbool.h inclusion and define bool consistently
         bool_definitions = [
             "-D_Bool=unsigned char",
-            # Don't redefine bool on Windows to avoid MSVC stdbool.h conflicts
+            "-D_STDBOOL_H",  # Prevent stdbool.h inclusion
+            "-D__STDBOOL_H",  # Alternative stdbool.h guard
+            "-Dbool=unsigned char",
+            "-Dtrue=1",
+            "-Dfalse=0",
         ]
     else:
         asm_definition = "-D__asm__(...)="
@@ -841,12 +866,13 @@ if not parse_success:
         [
             # Basic device structure with essential fields (matches actual Smpt_device)
             """typedef struct {
-                int file_descriptor;
-                char device_name[256];
-                unsigned char packet_number;
-                unsigned char is_connection_established;
-                unsigned char is_version_ack_received;
-                unsigned char last_packet_number_received;
+                unsigned int packet_length;
+                unsigned char packet[1200];
+                unsigned char cmd_list_data[1000];
+                signed char current_packet_number;
+                char serial_port_name[256];
+                unsigned char packet_input_buffer_data[120000];
+                unsigned char packet_input_buffer_state[100];
             } Smpt_device;""",
             # Basic low-level init structure
             """typedef struct {
@@ -873,9 +899,8 @@ if not parse_success:
             # Generic acknowledgment structure (matches actual Smpt_ack)
             """typedef struct {
                 unsigned char packet_number;
-                unsigned char command_number;
+                unsigned short command_number;
                 unsigned char result;
-                unsigned char reserved[13];
             } Smpt_ack;""",
         ]
     )
