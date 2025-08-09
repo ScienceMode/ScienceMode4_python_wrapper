@@ -246,7 +246,9 @@ for header in ROOT_HEADERS:
 
 defines = set()
 for header_path in HEADERS:
-    with open(os.sep.join([include_dir, header_path]), "r") as header_file:
+    with open(
+        os.sep.join([include_dir, header_path]), "r", encoding="utf-8"
+    ) as header_file:
         header = header_file.read()
         for match in DEFINE_PATTERN.finditer(header):
             if (
@@ -292,6 +294,5 @@ print("✅ CFFI configuration completed successfully!")
 
 # Optional: save for debugging
 if False:
-    file = open("sciencemode.cdef", "w")
-    file.write(cdef)
-    file.close()
+    with open("sciencemode.cdef", "w", encoding="utf-8") as file:
+        file.write(cdef)
