@@ -51,3 +51,30 @@ sciencemode = [
     "*.lib",
     "include/**/*.h",
 ]
+
+[tool.cibuildwheel]
+# Skip Python 3.6, 3.7 since we require Python >=3.8
+# Skip 32-bit builds as they're rarely needed for scientific libraries  
+# Skip PyPy by default (can be enabled if needed)
+skip = ["cp36-*", "cp37-*", "cp38-*", "cp14t-*", "*-win32", "*-manylinux_i686", "*-musllinux_i686", "pp*"]
+
+# Build environment setup
+environment = { CIBUILDWHEEL = "1" }
+
+# Ensure CFFI module is built correctly
+before-build = [
+    "python --version",
+    "pip install --upgrade pip setuptools wheel",
+    "pip install cffi pycparser",
+]
+
+# Test the built wheels
+test-requires = ["pytest"]
+
+# Skip testing on emulated architectures for faster builds
+test-skip = "*-*linux_{aarch64,ppc64le,s390x,armv7l,riscv64}"
+
+[tool.cibuildwheel.macos] 
+# Skip ARM64 testing on Intel Macs since they can't run natively
+test-skip = "*-macosx_arm64 *-macosx_universal2:arm64"
+

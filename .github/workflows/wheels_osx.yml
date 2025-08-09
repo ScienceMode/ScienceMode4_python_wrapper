@@ -28,9 +28,8 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
-          # Disable explicitly building PyPy wheels
-          CIBW_SKIP: pp*
-          CIBW_PRERELEASE_PYTHONS: False
+          # Override pyproject.toml settings if needed
+          CIBW_BUILD_VERBOSITY: 1
           MACOSX_DEPLOYMENT_TARGET: 14.0
 
       - uses: actions/upload-artifact@v4
