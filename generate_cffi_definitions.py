@@ -590,7 +590,7 @@ def fix_platform_specific_structs(cdef_content):
   char packet[1200];
   Smpt_cmd_list cmd_list;
   void* serial_port_handle_;
-  int8_t current_packet_number;
+  char current_packet_number;
   char serial_port_name[256];
   Packet_input_buffer packet_input_buffer;
   uint8_t packet_input_buffer_data[120000];
