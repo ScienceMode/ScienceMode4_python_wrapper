@@ -593,8 +593,8 @@ def fix_platform_specific_structs(cdef_content):
   char current_packet_number;
   char serial_port_name[256];
   Packet_input_buffer packet_input_buffer;
-  uint8_t packet_input_buffer_data[120000];
-  uint8_t packet_input_buffer_state[100];
+  char packet_input_buffer_data[120000];
+  char packet_input_buffer_state[100];
 } Smpt_device;"""
         else:
             # Linux/macOS version with descriptor - include
