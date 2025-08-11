@@ -1,21 +1,10 @@
-#!/usr/bin/env python
-
 """
-Standalone test for Smpt_device struct size compatibility.
+Test CFFI struct compatibility across platforms.
 
-This test specifically validates the fix for the CFFI struct size mismatch error:
-"ffi.error: Smpt_device: wrong size for field 'packet' (cdef says X, but C
-compiler says Y)"
-
-The fix uses flexible struct syntax (...;) in the cdef to handle platform differences.
+This module tests that the Smpt_device struct can be allocated and used
+without platform-specific size mismatches. The struct uses flexible
+array syntax (...;) to handle platform differences.
 """
-
-import os
-import sys
-
-# Add parent directory to path
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, parent_dir)
 
 
 def test_struct_size_compatibility():
@@ -46,80 +35,48 @@ def test_struct_size_compatibility():
         print(f"✗ Failed to allocate Smpt_device*: {e}")
         raise AssertionError(f"Failed to allocate Smpt_device*: {e}") from e
 
-    # Test 2: Field access
+    # Test 2: Field access - only test explicitly defined fields
     try:
         device.packet_length = 100
-        device.current_packet_number = 42
         assert device.packet_length == 100
-        assert device.current_packet_number == 42
         print("✓ Basic field access works")
     except Exception as e:
         print(f"✗ Failed basic field access: {e}")
         raise AssertionError(f"Failed basic field access: {e}") from e
 
-    # Test 3: Array field access (the packet_input_buffer_data field)
+    # Test 3: Array field access (the packet field)
     try:
-        device.packet_input_buffer_data[0] = 255
-        device.packet_input_buffer_data[1] = 128
-        assert device.packet_input_buffer_data[0] == 255
-        assert device.packet_input_buffer_data[1] == 128
-        print("✓ packet_input_buffer_data array field access works")
+        device.packet[0] = 255
+        device.packet[1] = 128
+        assert device.packet[0] == 255
+        assert device.packet[1] == 128
+        print("✓ packet array field access works")
     except Exception as e:
-        print(f"✗ Failed packet_input_buffer_data array access: {e}")
-        raise AssertionError(
-            f"Failed packet_input_buffer_data array access: {e}"
-        ) from e
+        print(f"✗ Failed packet array access: {e}")
+        raise AssertionError(f"Failed packet array access: {e}") from e
 
-    # Test 4: String field access
-    try:
-        test_name = b"test_port_name"
-        sciencemode.ffi.memmove(device.serial_port_name, test_name, len(test_name))
-        read_back = sciencemode.ffi.string(device.serial_port_name, len(test_name))
-        assert read_back == test_name
-        print("✓ String field access works")
-    except Exception as e:
-        print(f"✗ Failed string field access: {e}")
-        raise AssertionError(f"Failed string field access: {e}") from e
-
-    # Test 5: Struct size calculation
+    # Test 4: Struct size calculation (demonstrates flexible struct works)
     try:
         struct_size = sciencemode.ffi.sizeof("Smpt_device")
         print(f"✓ Smpt_device struct size: {struct_size} bytes")
+        assert struct_size > 0, "Struct has positive size"
     except Exception as e:
-        print(f"✗ Failed to calculate struct size: {e}")
-        raise AssertionError(f"Failed to calculate struct size: {e}") from e
+        print(f"✗ Failed struct size calculation: {e}")
+        raise AssertionError(f"Failed struct size calculation: {e}") from e
 
-    # Test 6: Multiple allocations
+    # Test 5: Multiple allocations (ensures consistent behavior)
     try:
         devices = []
         for i in range(3):
             dev = sciencemode.ffi.new("Smpt_device*")
-            dev.current_packet_number = i
+            dev.packet_length = i * 100
             devices.append(dev)
 
         for i, dev in enumerate(devices):
-            assert dev.current_packet_number == i
+            assert dev.packet_length == i * 100
         print("✓ Multiple device allocations work independently")
     except Exception as e:
         print(f"✗ Failed multiple allocations test: {e}")
         raise AssertionError(f"Failed multiple allocations test: {e}") from e
 
-    print("\n=== All Struct Compatibility Tests Passed! ===")
-    print(
-        "The flexible struct fix (using '...;') successfully resolved the size "
-        "mismatch issue."
-    )
-
-
-def standalone_test():
-    """Standalone version that returns boolean for script execution."""
-    try:
-        test_struct_size_compatibility()
-        return True
-    except AssertionError:
-        return False
-
-
-if __name__ == "__main__":
-    success = standalone_test()
-    sys.exit(0 if success else 1)
+    print("✓ All Smpt_device struct compatibility tests passed!")

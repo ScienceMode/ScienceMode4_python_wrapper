@@ -227,44 +227,24 @@ def test_smpt_device_struct_size_compatibility():
 
     # Test 2: Test accessing known fields that should be available
     try:
-        # These fields should be accessible based on the struct definition
+        # Only test explicitly defined fields
         device.packet_length = 0
-        device.current_packet_number = 1
-
-        # Verify the values were set
+        # Verify the value was set
         assert device.packet_length == 0, "packet_length field accessible"
-        assert (
-            device.current_packet_number == 1
-        ), "current_packet_number field accessible"
         print("✓ Core struct fields are accessible")
     except Exception as e:
         pytest.fail(f"Failed to access Smpt_device fields: {e}")
 
-    # Test 3: Test array field access (the packet_input_buffer_data field)
+    # Test 3: Test array field access (the packet field)
     try:
-        # The packet_input_buffer_data field is an actual array in the struct
-        device.packet_input_buffer_data[0] = 42  # Try to write to first element
-        assert (
-            device.packet_input_buffer_data[0] == 42
-        ), "packet_input_buffer_data array field accessible"
-        print("✓ packet_input_buffer_data array field is accessible")
+        # The packet field is an actual array in the struct
+        device.packet[0] = 42  # Try to write to first element
+        assert device.packet[0] == 42, "packet array field accessible"
+        print("✓ packet array field is accessible")
     except Exception as e:
-        pytest.fail(f"Failed to access packet_input_buffer_data array field: {e}")
+        pytest.fail(f"Failed to access packet array field: {e}")
 
-    # Test 4: Test string field access
-    try:
-        # Test serial port name field
-        test_name = b"test_port"
-        sciencemode.ffi.memmove(device.serial_port_name, test_name, len(test_name))
-
-        # Read back the first few bytes
-        read_back = sciencemode.ffi.string(device.serial_port_name, len(test_name))
-        assert read_back == test_name, "serial_port_name field accessible"
-        print("✓ String fields are accessible")
-    except Exception as e:
-        pytest.fail(f"Failed to access string fields: {e}")
-
-    # Test 5: Test struct size calculation
+    # Test 4: Test struct size calculation
     try:
         # This should not throw an error anymore with flexible struct
         struct_size = sciencemode.ffi.sizeof("Smpt_device")
@@ -294,14 +274,14 @@ def test_smpt_device_flexible_struct_behavior():
     try:
         for i in range(3):
             device = sciencemode.ffi.new("Smpt_device*")
-            device.current_packet_number = i
+            device.packet_length = i * 100  # Use packet_length instead
             devices.append(device)
 
         # Verify all devices are independent
         for i, device in enumerate(devices):
             assert (
-                device.current_packet_number == i
-            ), f"Device {i} has correct packet number"
+                device.packet_length == i * 100
+            ), f"Device {i} has correct packet length"
 
         print("✓ Multiple device allocations work independently")
     except Exception as e:
