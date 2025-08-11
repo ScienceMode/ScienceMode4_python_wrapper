@@ -98,20 +98,17 @@ elif platform.system() == "Darwin":
         [
             "-D__APPLE__",
             "-D__MACH__",
-            # Avoid problematic macros that can cause unbalanced conditionals
+            # Ensure macOS doesn't trigger MSVC-specific code paths
             "-U_MSC_VER",  # Don't pretend to be MSVC on macOS
             "-U_WIN32",
             "-UWIN32",
-            # Define away problematic Apple-specific macros
+            # Define away problematic Apple-specific macros that confuse pycparser
             "-D__builtin_available(...)=1",
             "-D__has_feature(x)=0",
             "-D__has_extension(x)=0",
             "-D__has_attribute(x)=0",
-            # Let macOS use its standard bool handling instead of our bool redefinition
-            "-Ubool",  # Undefine our bool override
-            "-U_Bool",  # Undefine our _Bool override
-            "-Utrue",  # Undefine our true override
-            "-Ufalse",  # Undefine our false override
+            # Use C99 stdbool.h instead of custom bool definitions
+            "-D__cplusplus=1",  # Force use of stdbool.h path
         ]
     )
 
@@ -345,6 +342,38 @@ for header in ROOT_HEADERS:
 
     except Exception as e:
         print(f"Failed to parse {header}: {e}")
+
+        # macOS-specific fallback: try with minimal preprocessor args
+        if platform.system() == "Darwin":
+            print(f"Attempting macOS fallback parsing for {header}...")
+
+            # Minimal args that work better with pycparser on macOS
+            fallback_args = {
+                "use_cpp": True,
+                "cpp_path": cpp_path,
+                "cpp_args": [
+                    "-I" + smpt_include_path1,
+                    "-I" + smpt_include_path2,
+                    "-I" + smpt_include_path3,
+                    "-I" + smpt_include_path4,
+                    "-Iutils/fake_libc_include",
+                    "-D__attribute__(x)=",
+                    "-D__inline=",
+                    "-D__APPLE__",
+                    "-D__MACH__",
+                    "-U_MSC_VER",
+                    "-U_WIN32",
+                ],
+            }
+
+            try:
+                ast = pycparser.parse_file(header_path, **fallback_args)
+                collector.visit(ast)
+                print(f"Successfully parsed {header} with macOS fallback")
+                continue
+            except Exception as fallback_error:
+                print(f"macOS fallback also failed: {fallback_error}")
+
         raise RuntimeError(
             f"Header parsing failed for {header}. "
             "Cannot proceed without C preprocessor."
