@@ -99,7 +99,7 @@ elif platform.system() == "Darwin":
             "-D__APPLE__",
             "-D__MACH__",
             # Ensure macOS doesn't trigger MSVC-specific code paths
-            "-U_MSC_VER",  # Don't pretend to be MSVC on macOS
+            "-U_MSC_VER",
             "-U_WIN32",
             "-UWIN32",
             # Define away problematic Apple-specific macros that confuse pycparser
@@ -107,8 +107,6 @@ elif platform.system() == "Darwin":
             "-D__has_feature(x)=0",
             "-D__has_extension(x)=0",
             "-D__has_attribute(x)=0",
-            # Use C99 stdbool.h instead of custom bool definitions
-            "-D__cplusplus=1",  # Force use of stdbool.h path
         ]
     )
 
