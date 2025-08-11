@@ -15,7 +15,9 @@ env:
     ./configure --without-gcc-arch --disable-docs --with-pic --enable-shared=no && \
     make install && \
     cd .. && \
-    rm -rf libffi-3.4.6 
+    rm -rf libffi-3.4.6 && \
+    python setup.py build_lib && \
+    python generate_cffi_definitions.py
 jobs:
 
   build_aarch64_wheels:
@@ -41,11 +43,6 @@ jobs:
  
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel
-      - name: Build lib 
-        run: python setup.py build_lib 
-      - name: Build cdef 
-        run: python generate_cffi_definitions.py
-
 
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
