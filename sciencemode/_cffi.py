@@ -73,7 +73,6 @@ DEFINE_ARGS = [
     "-U__i386__",
     "-U__MINGW32__",
     "-DNT_INCLUDED",
-    "-D_MSC_VER=1900",
     # Minimal bool support - just enough for pycparser to understand modern headers
     "-D_Bool=_Bool",
     "-Dbool=_Bool",
@@ -92,11 +91,30 @@ DEFINE_ARGS = [
 
 # Add platform-specific defines
 if platform.system() == "Windows":
-    DEFINE_ARGS.append("-D_WIN32")
+    DEFINE_ARGS.extend(["-D_WIN32", "-D_MSC_VER=1900"])
 elif platform.system() == "Linux":
     DEFINE_ARGS.append("-D__linux__")
 elif platform.system() == "Darwin":
-    DEFINE_ARGS.append("-D__APPLE__")
+    DEFINE_ARGS.extend(
+        [
+            "-D__APPLE__",
+            "-D__MACH__",
+            # Avoid problematic macros that can cause unbalanced conditionals
+            "-U_MSC_VER",  # Don't pretend to be MSVC on macOS
+            "-U_WIN32",
+            "-UWIN32",
+            # Define away problematic Apple-specific macros
+            "-D__builtin_available(...)=1",
+            "-D__has_feature(x)=0",
+            "-D__has_extension(x)=0",
+            "-D__has_attribute(x)=0",
+            # Let macOS use its standard bool handling instead of our bool redefinition
+            "-Ubool",  # Undefine our bool override
+            "-U_Bool",  # Undefine our _Bool override
+            "-Utrue",  # Undefine our true override
+            "-Ufalse",  # Undefine our false override
+        ]
+    )
 
 FUNCTION_BLACKLIST = {}
 
