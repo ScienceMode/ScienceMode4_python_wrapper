@@ -583,11 +583,10 @@ def fix_platform_specific_structs(cdef_content):
         )
 
         if platform.system() == "Windows":
-            # Windows version with HANDLE - use flexible struct
+            # Windows version with HANDLE - use flexible struct for packet field
             platform_struct = """typedef struct
 {
   uint32_t packet_length;
-  uint8_t packet[1200];
   Smpt_cmd_list cmd_list;
   void* serial_port_handle_;
   int8_t current_packet_number;
@@ -598,11 +597,10 @@ def fix_platform_specific_structs(cdef_content):
   ...;
 } Smpt_device;"""
         else:
-            # Linux/macOS version with descriptor - use flexible struct
+            # Linux/macOS version with descriptor - use flexible struct for packet field
             platform_struct = """typedef struct
 {
   uint32_t packet_length;
-  uint8_t packet[1200];
   Smpt_cmd_list cmd_list;
   int serial_port_descriptor;
   int8_t current_packet_number;
