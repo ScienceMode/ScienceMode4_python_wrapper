@@ -439,6 +439,33 @@ for header_path in HEADERS:
             except ValueError:
                 defines.add(f"#define {match.group(1)} ...")
 
+# macOS fallback: manually add critical missing constants if not found
+if platform.system() == "Darwin":
+    critical_constants = {
+        "SMPT_DL_1KHZ": "1000",
+        "SMPT_DL_2KHZ": "2000",
+        "SMPT_DL_4KHZ": "4000",
+        "SMPT_DL_FILE_SIZE_BYTES": "8",
+        "SMPT_DL_GUID_STRING_LENGTH": "36",
+        "SMPT_DL_MAX_BLOCK_BYTES_LENGTH": "512",
+        "SMPT_DL_MAX_CHANNELS": "8",
+        "SMPT_DL_MAX_FILE_ID_LENGTH": "60",
+        "SMPT_DL_MAX_STRING_LENGTH": "128",
+    }
+
+    existing_defines = {
+        line.split()[1] for line in defines if line.startswith("#define ")
+    }
+
+    for const_name, const_value in critical_constants.items():
+        if const_name not in existing_defines:
+            print(
+                f"macOS fallback: Adding missing constant {const_name} = {const_value}"
+            )
+            defines.add(f"#define {const_name} {const_value}")
+        else:
+            print(f"macOS: Found {const_name} in extracted defines")
+
 print(
     f"Processing {len(defines)} defines, {len(collector.typedecls)} types, "
     f"{len(collector.functions)} functions"
