@@ -32,6 +32,27 @@ try:
     except Exception as e:
         print(f"✗ Error creating device struct: {e}")
 
+    # Test struct field access (from new compatibility tests)
+    try:
+        device.packet_length = 100
+        device.current_packet_number = 42
+        device.packet[0] = 255
+
+        # Verify values
+        assert device.packet_length == 100
+        assert device.current_packet_number == 42
+        assert device.packet[0] == 255
+        print("✓ Struct field access works correctly")
+    except Exception as e:
+        print(f"✗ Error accessing struct fields: {e}")
+
+    # Test struct size calculation
+    try:
+        struct_size = sm.ffi.sizeof("Smpt_device")
+        print(f"✓ Smpt_device struct size: {struct_size} bytes")
+    except Exception as e:
+        print(f"✗ Error calculating struct size: {e}")
+
     # Check library files
     package_dir = os.path.dirname(sciencemode.__file__)
     lib_files = [

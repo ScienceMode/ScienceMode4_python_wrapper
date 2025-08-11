@@ -583,7 +583,7 @@ def fix_platform_specific_structs(cdef_content):
         )
 
         if platform.system() == "Windows":
-            # Windows version with HANDLE - preserve actual field order from headers
+            # Windows version with HANDLE - use flexible struct
             platform_struct = """typedef struct
 {
   uint32_t packet_length;
@@ -595,10 +595,10 @@ def fix_platform_specific_structs(cdef_content):
   Packet_input_buffer packet_input_buffer;
   uint8_t packet_input_buffer_data[120000];
   uint8_t packet_input_buffer_state[100];
+  ...;
 } Smpt_device;"""
         else:
-            # Linux/macOS version with descriptor - preserve actual field order
-            # from headers
+            # Linux/macOS version with descriptor - use flexible struct
             platform_struct = """typedef struct
 {
   uint32_t packet_length;
@@ -610,6 +610,7 @@ def fix_platform_specific_structs(cdef_content):
   Packet_input_buffer packet_input_buffer;
   uint8_t packet_input_buffer_data[120000];
   uint8_t packet_input_buffer_state[100];
+  ...;
 } Smpt_device;"""
 
         # Replace any existing Smpt_device struct with the platform-appropriate one

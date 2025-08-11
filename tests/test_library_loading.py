@@ -196,3 +196,114 @@ def test_string_conversion():
         # Skip device field tests which are causing issues
         # They're already tested in test_create_device_struct
         print("Skipping device field tests - already covered in other tests")
+
+
+def test_smpt_device_struct_size_compatibility():
+    """Test that Smpt_device struct can be created without size mismatches.
+
+    This test specifically addresses the issue where CFFI would fail with:
+    "ffi.error: Smpt_device: wrong size for field 'packet' (cdef says X, but C
+    compiler says Y)"
+
+    The fix uses flexible struct syntax (...;) to handle platform differences.
+    """
+    from sciencemode import sciencemode
+
+    print("Testing Smpt_device struct size compatibility...")
+
+    # Test 1: Basic struct allocation should not fail
+    try:
+        device = sciencemode.ffi.new("Smpt_device*")
+        assert device is not None, "Smpt_device* allocation succeeded"
+        print("✓ Basic Smpt_device* allocation works")
+    except Exception as e:
+        pytest.fail(f"Failed to allocate Smpt_device*: {e}")
+
+    # Test 2: Test accessing known fields that should be available
+    try:
+        # These fields should be accessible based on the struct definition
+        device.packet_length = 0
+        device.current_packet_number = 1
+
+        # Verify the values were set
+        assert device.packet_length == 0, "packet_length field accessible"
+        assert (
+            device.current_packet_number == 1
+        ), "current_packet_number field accessible"
+        print("✓ Core struct fields are accessible")
+    except Exception as e:
+        pytest.fail(f"Failed to access Smpt_device fields: {e}")
+
+    # Test 3: Test array field access (the problematic 'packet' field)
+    try:
+        # The packet field was the source of the size mismatch error
+        # With flexible struct (...;), this should work
+        device.packet[0] = 42  # Try to write to first element
+        assert device.packet[0] == 42, "packet array field accessible"
+        print("✓ Packet array field is accessible (size mismatch fixed)")
+    except Exception as e:
+        pytest.fail(f"Failed to access packet array field: {e}")
+
+    # Test 4: Test string field access
+    try:
+        # Test serial port name field
+        test_name = b"test_port"
+        sciencemode.ffi.memmove(device.serial_port_name, test_name, len(test_name))
+
+        # Read back the first few bytes
+        read_back = sciencemode.ffi.string(device.serial_port_name, len(test_name))
+        assert read_back == test_name, "serial_port_name field accessible"
+        print("✓ String fields are accessible")
+    except Exception as e:
+        pytest.fail(f"Failed to access string fields: {e}")
+
+    # Test 5: Test struct size calculation
+    try:
+        # This should not throw an error anymore with flexible struct
+        struct_size = sciencemode.ffi.sizeof("Smpt_device")
+        assert struct_size > 0, "Struct size calculation succeeds"
+        print(f"✓ Smpt_device struct size: {struct_size} bytes")
+    except Exception as e:
+        pytest.fail(f"Failed to calculate struct size: {e}")
+
+    print("All Smpt_device struct compatibility tests passed!")
+
+
+def test_smpt_device_flexible_struct_behavior():
+    """Test that the flexible struct (...;) behaves correctly with different
+    operations."""
+    from sciencemode import sciencemode
+
+    print("Testing flexible struct behavior...")
+
+    # Test multiple device allocations
+    devices = []
+    try:
+        for i in range(3):
+            device = sciencemode.ffi.new("Smpt_device*")
+            device.current_packet_number = i
+            devices.append(device)
+
+        # Verify all devices are independent
+        for i, device in enumerate(devices):
+            assert (
+                device.current_packet_number == i
+            ), f"Device {i} has correct packet number"
+
+        print("✓ Multiple device allocations work independently")
+    except Exception as e:
+        pytest.fail(f"Failed multiple device allocation test: {e}")
+
+    # Test that we can still detect the struct properly
+    try:
+        device = sciencemode.ffi.new("Smpt_device*")
+
+        # The struct should have the expected type
+        assert sciencemode.ffi.typeof(device) == sciencemode.ffi.typeof(
+            "Smpt_device*"
+        ), "Device has correct type"
+        print("✓ Device type detection works correctly")
+    except Exception as e:
+        pytest.fail(f"Failed device type detection: {e}")
+
+    print("All flexible struct behavior tests passed!")
