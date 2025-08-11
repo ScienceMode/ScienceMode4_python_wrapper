@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "cffi>=1.0.0", "pycparser"]
+requires = ["setuptools>=45", "wheel", "cffi>=1.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -49,6 +49,7 @@ sciencemode = [
     "*.dylib",
     "*.a",
     "*.lib",
+    "*.cdef",
     "include/**/*.h",
 ]
 
