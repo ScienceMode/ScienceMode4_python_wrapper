@@ -25,9 +25,6 @@ jobs:
 
       - name: Build lib 
         run: python setup.py build_lib 
-      - name: Build cffi 
-        run: python setup.py build_cffi 
-
 
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
