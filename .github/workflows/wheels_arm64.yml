@@ -8,6 +8,7 @@ env:
   CIBW_TEST_SOURCES: "tests"
   CIBW_BEFORE_BUILD: |
     set -eux && \
+    pip install setuptools wheel cffi pycparser && \
     curl -L -O https://github.com/libffi/libffi/archive/v3.4.6.tar.gz && \
     tar zxf v3.4.6.tar.gz && cd libffi-3.4.6 && \
     ((command -v apk && apk add libtool) || true) && \
