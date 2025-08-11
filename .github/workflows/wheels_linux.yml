@@ -2,6 +2,7 @@ name: Build wheel on linux
 on: [push]
 env:
   CIBW_BUILD_VERBOSITY: 1
+  CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
   CIBW_TEST_REQUIRES: pytest
   CIBW_TEST_COMMAND: "pytest {project}/tests"
   CIBW_TEST_SOURCES: "tests"

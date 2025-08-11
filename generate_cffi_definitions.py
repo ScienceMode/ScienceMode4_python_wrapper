@@ -168,7 +168,8 @@ elif platform.system() == "Darwin":
     )
 
 FUNCTION_BLACKLIST = {
-    # Functions that are declared in headers but missing implementations on some platforms (macOS)
+    # Functions that are declared in headers but missing implementations on some
+    # platforms (macOS)
     "smpt_get_dl_get_ack",
     "smpt_get_dl_init_ack",
     "smpt_get_dl_power_module_ack",
@@ -486,8 +487,10 @@ for header_path in HEADERS:
 
 # Add safe fallback for problematic constants that might be missing or cause overflow
 safe_fallbacks = {
-    # Commenting out SMPT_DL_MAX_FILE_SIZE - let it be excluded entirely to avoid CFFI issues
-    # "SMPT_DL_MAX_FILE_SIZE": "2147483647",  # Max 32-bit signed int to avoid overflow issues
+    # Commenting out SMPT_DL_MAX_FILE_SIZE - let it be excluded entirely to avoid
+    # CFFI issues
+    # "SMPT_DL_MAX_FILE_SIZE": "2147483647",  # Max 32-bit signed int to avoid
+    # overflow issues
 }
 
 existing_defines = {line.split()[1] for line in defines if line.startswith("#define ")}
@@ -561,9 +564,11 @@ cdef = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 
 
 # Fix platform-specific struct fields - create a platform-appropriate struct
-# The Smpt_device struct has different fields on different platforms due to #ifdef blocks
+# The Smpt_device struct has different fields on different platforms due to
+# #ifdef blocks
 def fix_platform_specific_structs(cdef_content):
-    """Fix structs that have platform-specific fields by creating platform-appropriate definitions."""
+    """Fix structs that have platform-specific fields by creating
+    platform-appropriate definitions."""
 
     # Pattern to match any Smpt_device struct definition
     device_struct_pattern = (
@@ -573,12 +578,13 @@ def fix_platform_specific_structs(cdef_content):
     # Check if we have any Smpt_device struct definition
     if re.search(device_struct_pattern, cdef_content, re.DOTALL):
         print(
-            f"Found Smpt_device struct, creating {platform.system()}-specific version..."
+            f"Found Smpt_device struct, creating {platform.system()}-specific "
+            "version..."
         )
 
         if platform.system() == "Windows":
             # Windows version with HANDLE - preserve actual field order from headers
-            platform_struct = """typedef struct 
+            platform_struct = """typedef struct
 {
   uint32_t packet_length;
   uint8_t packet[1200];
@@ -591,8 +597,9 @@ def fix_platform_specific_structs(cdef_content):
   uint8_t packet_input_buffer_state[100];
 } Smpt_device;"""
         else:
-            # Linux/macOS version with descriptor - preserve actual field order from headers
-            platform_struct = """typedef struct 
+            # Linux/macOS version with descriptor - preserve actual field order
+            # from headers
+            platform_struct = """typedef struct
 {
   uint32_t packet_length;
   uint8_t packet[1200];
@@ -610,7 +617,8 @@ def fix_platform_specific_structs(cdef_content):
             device_struct_pattern, platform_struct, cdef_content, flags=re.DOTALL
         )
         print(
-            f"Replaced Smpt_device with {platform.system()}-specific definition (correct field order)"
+            f"Replaced Smpt_device with {platform.system()}-specific definition "
+            "(correct field order)"
         )
 
     return cdef_content
