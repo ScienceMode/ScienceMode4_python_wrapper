@@ -46,9 +46,54 @@ smpt_include_path3 = os.path.join(include_dir, "mid-level")
 smpt_include_path4 = os.path.join(include_dir, "dyscom-level")
 
 INCLUDE_PATTERN = re.compile(r"(-I)?(.*ScienceMode)")
-DEFINE_PATTERN = re.compile(r"^#define\s+(\w+)\s+\(?([\w<|.]+)\)?", re.M)
+DEFINE_PATTERN = re.compile(r"^#define\s+(\w+)\s+\(?([\w<|.\-+*/()\s]+)\)?", re.M)
 DEFINE_BLACKLIST = {
     "main",
+    # Header guard defines that should not be treated as constants
+    "SMPT_API",
+    "SMPT_CLIENT_CMD_LISTS_H",
+    "SMPT_CLIENT_DATA_H",
+    "SMPT_CLIENT_H",
+    "SMPT_CLIENT_POWER_H",
+    "SMPT_CLIENT_UTILS_H",
+    "SMPT_DEFINITIONS_DATA_TYPES_H",
+    "SMPT_DEFINITIONS_FILE_TRANSFER_H",
+    "SMPT_DEFINITIONS_H",
+    "SMPT_DEFINITIONS_INTERNAL_H",
+    "SMPT_DEFINITIONS_POWER_H",
+    "SMPT_DL_DEFINITIONS_DATA_TYPES_H",
+    "SMPT_DL_DEFINITIONS_H",
+    "SMPT_DL_PACKET_CLIENT_H",
+    "SMPT_DL_PACKET_VALIDITY_H",
+    "SMPT_DL_SERVER_H",
+    "SMPT_FILE_H",
+    "SMPT_LL_DEFINITIONS_DATA_TYPES_H",
+    "SMPT_LL_DEFINITIONS_H",
+    "SMPT_LL_MESSAGES_H",
+    "SMPT_LL_PACKET_CLIENT_H",
+    "SMPT_LL_PACKET_INTERNAL_H",
+    "SMPT_LL_PACKET_VALIDITY_H",
+    "SMPT_LL_SERIAL_PORT_LINUX_H",
+    "SMPT_LL_SERIAL_PORT_WINDOWS_H",
+    "SMPT_LL_SERVER_H",
+    "SMPT_MESSAGES_H",
+    "SMPT_ML_DEFINITIONS_DATA_TYPES_H",
+    "SMPT_ML_DEFINITIONS_H",
+    "SMPT_ML_PACKET_CLIENT_H",
+    "SMPT_ML_PACKET_SERVER_H",
+    "SMPT_ML_PACKET_UTILS_H",
+    "SMPT_ML_PACKET_VALIDITY_H",
+    "SMPT_PACKET_CLIENT_H",
+    "SMPT_PACKET_GENERAL_H",
+    "SMPT_PACKET_INPUT_BUFFER_DEFINITIONS_H",
+    "SMPT_PACKET_INPUT_BUFFER_H",
+    "SMPT_PACKET_INPUT_BUFFER_INTERNAL_H",
+    "SMPT_PACKET_NUMBER_GENERATOR_H",
+    "SMPT_PACKET_OUTPUT_BUFFER_H",
+    "SMPT_PACKET_SERVER_H",
+    "SMPT_PACKET_UTILS_H",
+    "SMPT_PACKET_VALIDITY_H",
+    "SMPT_SERIAL_PORT_H",
 }
 
 # Define GCC specific compiler extensions away - simplified + minimal bool
