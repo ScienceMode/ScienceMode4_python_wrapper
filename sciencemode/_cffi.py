@@ -23,8 +23,7 @@ project_root = os.path.dirname(current_dir)
 # Print for debugging
 print(f"Found ScienceMode in: {project_root}")
 
-# Setup paths based on the structure
-smpt_submodule_path = os.path.join(project_root, "smpt", "ScienceMode_Library")
+smpt_submodule_path = os.path.join(project_root, "sciencemode")
 if os.path.exists(smpt_submodule_path):
     devel_root = smpt_submodule_path
     print(f"Using submodule SMPT library: {devel_root}")
