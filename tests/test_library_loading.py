@@ -240,15 +240,16 @@ def test_smpt_device_struct_size_compatibility():
     except Exception as e:
         pytest.fail(f"Failed to access Smpt_device fields: {e}")
 
-    # Test 3: Test array field access (the problematic 'packet' field)
+    # Test 3: Test array field access (the packet_input_buffer_data field)
     try:
-        # The packet field was the source of the size mismatch error
-        # With flexible struct (...;), this should work
-        device.packet[0] = 42  # Try to write to first element
-        assert device.packet[0] == 42, "packet array field accessible"
-        print("✓ Packet array field is accessible (size mismatch fixed)")
+        # The packet_input_buffer_data field is an actual array in the struct
+        device.packet_input_buffer_data[0] = 42  # Try to write to first element
+        assert (
+            device.packet_input_buffer_data[0] == 42
+        ), "packet_input_buffer_data array field accessible"
+        print("✓ packet_input_buffer_data array field is accessible")
     except Exception as e:
-        pytest.fail(f"Failed to access packet array field: {e}")
+        pytest.fail(f"Failed to access packet_input_buffer_data array field: {e}")
 
     # Test 4: Test string field access
     try:

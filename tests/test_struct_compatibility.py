@@ -57,16 +57,18 @@ def test_struct_size_compatibility():
         print(f"✗ Failed basic field access: {e}")
         raise AssertionError(f"Failed basic field access: {e}") from e
 
-    # Test 3: Array field access (the problematic 'packet' field)
+    # Test 3: Array field access (the packet_input_buffer_data field)
     try:
-        device.packet[0] = 255
-        device.packet[1] = 128
-        assert device.packet[0] == 255
-        assert device.packet[1] == 128
-        print("✓ Packet array field access works (size mismatch fixed)")
+        device.packet_input_buffer_data[0] = 255
+        device.packet_input_buffer_data[1] = 128
+        assert device.packet_input_buffer_data[0] == 255
+        assert device.packet_input_buffer_data[1] == 128
+        print("✓ packet_input_buffer_data array field access works")
     except Exception as e:
-        print(f"✗ Failed packet array access: {e}")
-        raise AssertionError(f"Failed packet array access: {e}") from e
+        print(f"✗ Failed packet_input_buffer_data array access: {e}")
+        raise AssertionError(
+            f"Failed packet_input_buffer_data array access: {e}"
+        ) from e
 
     # Test 4: String field access
     try:
