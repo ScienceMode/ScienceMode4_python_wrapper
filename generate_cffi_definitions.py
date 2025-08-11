@@ -563,6 +563,31 @@ cdef = re.sub(r"\b_Bool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 cdef = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 
 
+def fix_windows_type_compatibility(cdef_content):
+    """Fix Windows-specific type compatibility issues by converting uint8_t to char
+    to avoid CFFI size calculation mismatches."""
+
+    if platform.system() == "Windows":
+        print("Applying Windows-specific type fixes...")
+
+        # Convert uint8_t to char everywhere for Windows CFFI compatibility
+        # This prevents size calculation mismatches between CFFI and C compiler
+        cdef_content = re.sub(r"\buint8_t\b", "char", cdef_content)
+
+        # Also convert int8_t to char for consistency (they're the same size)
+        cdef_content = re.sub(r"\bint8_t\b", "char", cdef_content)
+
+        print("Converted uint8_t and int8_t to char for Windows compatibility")
+    else:
+        print("Non-Windows platform - keeping original types")
+
+    return cdef_content
+
+
+# Apply Windows type compatibility fixes
+cdef = fix_windows_type_compatibility(cdef)
+
+
 # Fix platform-specific struct fields - create a platform-appropriate struct
 # The Smpt_device struct has different fields on different platforms due to
 # #ifdef blocks
@@ -583,7 +608,7 @@ def fix_platform_specific_structs(cdef_content):
         )
 
         if platform.system() == "Windows":
-            # Windows version with HANDLE - use flexible struct to avoid size issues
+            # Windows version with HANDLE - all uint8_t already converted to char
             platform_struct = """typedef struct
 {
   uint32_t packet_length;
@@ -597,8 +622,7 @@ def fix_platform_specific_structs(cdef_content):
   char packet_input_buffer_state[100];
 } Smpt_device;"""
         else:
-            # Linux/macOS version with descriptor - include
-            # packet field for size consistency
+            # Linux/macOS version with descriptor - keep original types
             platform_struct = """typedef struct
 {
   uint32_t packet_length;
@@ -618,7 +642,7 @@ def fix_platform_specific_structs(cdef_content):
         )
         print(
             f"Replaced Smpt_device with {platform.system()}-specific definition "
-            "(Windows uses flexible struct, Linux uses explicit packet field)"
+            "(Windows uses char types, Linux uses original types)"
         )
 
     return cdef_content
