@@ -8,9 +8,25 @@ C headers change to regenerate the definitions.
 
 Requirements: pycparser, cffi
 
-Usage: python generate_cffi_definitions.py
+Usage:
+  python generate_cffi_definitions.py                    # Use current platform
+  python generate_cffi_definitions.py --platform windows  # Force Windows output
+  python generate_cffi_definitions.py --platform linux    # Force Linux output
+  python generate_cffi_definitions.py --platform darwin   # Force macOS output
+
+Platform-specific differences:
+  - Windows: Uses 'void* serial_port_handle_' and 'char' types for CFFI compatibility
+  - Linux/macOS: Uses 'int serial_port_descriptor' and 'uint8_t/int8_t' types
+
+Examples:
+  # Generate definitions for testing Windows compatibility on Linux
+  python generate_cffi_definitions.py --platform windows --output windows_test.cdef
+
+  # Generate platform-specific definitions for CI/CD
+  python generate_cffi_definitions.py --platform linux --output sciencemode_linux.cdef
 """
 
+import argparse
 import os
 import sys
 
@@ -28,6 +44,34 @@ import pycparser
 from cffi import FFI
 from pycparser import c_ast
 from pycparser.c_generator import CGenerator
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(
+    description="Generate CFFI definitions for ScienceMode"
+)
+parser.add_argument(
+    "--platform",
+    choices=["windows", "linux", "darwin"],
+    help="Force platform-specific output (overrides actual platform)",
+)
+parser.add_argument(
+    "--output", help="Output file path (default: sciencemode/sciencemode.cdef)"
+)
+args = parser.parse_args()
+
+# Determine target platform (override if specified)
+target_platform = platform.system()  # Default to actual platform
+
+if args.platform:
+    if args.platform.lower() == "windows":
+        target_platform = "Windows"
+    elif args.platform.lower() == "linux":
+        target_platform = "Linux"
+    elif args.platform.lower() == "darwin":
+        target_platform = "Darwin"
+    print(f"Platform override: targeting {target_platform}")
+else:
+    print(f"Using current platform: {target_platform}")
 
 # Get the directory of this file
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -146,11 +190,11 @@ DEFINE_ARGS = [
 ]
 
 # Add platform-specific defines
-if platform.system() == "Windows":
+if target_platform == "Windows":
     DEFINE_ARGS.extend(["-D_WIN32", "-D_MSC_VER=1900"])
-elif platform.system() == "Linux":
+elif target_platform == "Linux":
     DEFINE_ARGS.append("-D__linux__")
-elif platform.system() == "Darwin":
+elif target_platform == "Darwin":
     DEFINE_ARGS.extend(
         [
             "-D__APPLE__",
@@ -433,7 +477,7 @@ for header in ROOT_HEADERS:
         print(f"Failed to parse {header}: {e}")
 
         # macOS-specific fallback: try with minimal preprocessor args
-        if platform.system() == "Darwin":
+        if target_platform == "Darwin":
             print(f"Attempting macOS fallback parsing for {header}...")
 
             # Minimal args that work better with pycparser on macOS
@@ -510,7 +554,7 @@ for const_name, const_value in safe_fallbacks.items():
         print(f"Replaced problematic definition: {const_name} = {const_value}")
 
 # macOS fallback: manually add critical missing constants if not found
-if platform.system() == "Darwin":
+if target_platform == "Darwin":
     critical_constants = {
         "SMPT_DL_1KHZ": "1000",
         "SMPT_DL_2KHZ": "2000",
@@ -565,19 +609,34 @@ cdef = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 
 def fix_windows_type_compatibility(cdef_content):
     """Fix Windows-specific type compatibility issues by converting uint8_t to char
-    to avoid CFFI size calculation mismatches."""
+    in struct definitions only, to avoid CFFI size calculation mismatches."""
 
-    if platform.system() == "Windows":
+    if target_platform == "Windows":
         print("Applying Windows-specific type fixes...")
 
-        # Convert uint8_t to char everywhere for Windows CFFI compatibility
+        # Only convert uint8_t/int8_t to char in specific struct
+        # fields for arrays/basic fields
         # This prevents size calculation mismatches between CFFI and C compiler
-        cdef_content = re.sub(r"\buint8_t\b", "char", cdef_content)
 
-        # Also convert int8_t to char for consistency (they're the same size)
-        cdef_content = re.sub(r"\bint8_t\b", "char", cdef_content)
+        # More precise patterns to target specific problematic fields
+        replacements = [
+            # Target specific arrays that cause CFFI issues
+            (r"\buint8_t\s+(packet\[1200\])", r"char \1"),
+            (r"\buint8_t\s+(packet_input_buffer_data\[120000\])", r"char \1"),
+            (r"\buint8_t\s+(packet_input_buffer_state\[100\])", r"char \1"),
+            (r"\bint8_t\s+(current_packet_number)", r"char \1"),
+            # Target simple field declarations in structs
+            (r"(\s+)uint8_t\s+(\w+);", r"\1char \2;"),
+            (r"(\s+)int8_t\s+(\w+);", r"\1char \2;"),
+        ]
 
-        print("Converted uint8_t and int8_t to char for Windows compatibility")
+        for pattern, replacement in replacements:
+            cdef_content = re.sub(pattern, replacement, cdef_content)
+
+        print(
+            "Converted specific uint8_t and int8_t fields to "
+            "char for Windows CFFI compatibility"
+        )
     else:
         print("Non-Windows platform - keeping original types")
 
@@ -603,11 +662,10 @@ def fix_platform_specific_structs(cdef_content):
     # Check if we have any Smpt_device struct definition
     if re.search(device_struct_pattern, cdef_content, re.DOTALL):
         print(
-            f"Found Smpt_device struct, creating {platform.system()}-specific "
-            "version..."
+            f"Found Smpt_device struct, creating {target_platform}-specific version..."
         )
 
-        if platform.system() == "Windows":
+        if target_platform == "Windows":
             # Windows version with HANDLE - all uint8_t already converted to char
             platform_struct = """typedef struct
 {
@@ -641,7 +699,7 @@ def fix_platform_specific_structs(cdef_content):
             device_struct_pattern, platform_struct, cdef_content, flags=re.DOTALL
         )
         print(
-            f"Replaced Smpt_device with {platform.system()}-specific definition "
+            f"Replaced Smpt_device with {target_platform}-specific definition "
             "(Windows uses char types, Linux uses original types)"
         )
 
@@ -655,7 +713,17 @@ ffi.cdef(cdef)
 print("CFFI configuration completed successfully!")
 
 # Save generated definitions to file
-cdef_output_path = os.path.join(current_dir, "sciencemode", "sciencemode.cdef")
+if args.output:
+    cdef_output_path = args.output
+else:
+    cdef_output_path = os.path.join(current_dir, "sciencemode", "sciencemode.cdef")
+
 with open(cdef_output_path, "w", encoding="utf-8") as file:
     file.write(cdef)
 print(f"Generated CFFI definitions saved to: {cdef_output_path}")
+
+# Also print platform info in the file header comment
+if args.platform:
+    print(f"Platform override used: {target_platform}")
+else:
+    print(f"Current platform used: {target_platform}")
