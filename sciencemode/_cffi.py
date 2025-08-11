@@ -245,9 +245,9 @@ for header in ROOT_HEADERS:
     try:
         ast = pycparser.parse_file(os.sep.join([include_dir, header]), **pycparser_args)
         collector.visit(ast)
-        print(f"✅ Successfully parsed {header}")
+        print(f"Successfully parsed {header}")
     except Exception as e:
-        print(f"❌ Failed to parse {header}: {e}")
+        print(f"Failed to parse {header}: {e}")
         # Don't continue with broken parsing - this should work
         raise
 
@@ -297,7 +297,7 @@ cdef = re.sub(r"\bbool\s*\[([^\]]*)\]", r"unsigned char[\1]", cdef)
 
 ffi.cdef(cdef)
 
-print("✅ CFFI configuration completed successfully!")
+print("CFFI configuration completed successfully!")
 
 # Optional: save for debugging
 if False:
