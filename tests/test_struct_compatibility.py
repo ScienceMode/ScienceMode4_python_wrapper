@@ -28,7 +28,7 @@ def test_struct_size_compatibility():
         print("✓ Successfully imported sciencemode")
     except Exception as e:
         print(f"✗ Failed to import sciencemode: {e}")
-        return False
+        assert False, f"Failed to import sciencemode: {e}"
 
     # Test 1: Basic struct allocation
     try:
@@ -36,7 +36,7 @@ def test_struct_size_compatibility():
         print("✓ Basic Smpt_device* allocation succeeded")
     except Exception as e:
         print(f"✗ Failed to allocate Smpt_device*: {e}")
-        return False
+        assert False, f"Failed to allocate Smpt_device*: {e}"
 
     # Test 2: Field access
     try:
@@ -47,7 +47,7 @@ def test_struct_size_compatibility():
         print("✓ Basic field access works")
     except Exception as e:
         print(f"✗ Failed basic field access: {e}")
-        return False
+        assert False, f"Failed basic field access: {e}"
 
     # Test 3: Array field access (the problematic 'packet' field)
     try:
@@ -58,7 +58,7 @@ def test_struct_size_compatibility():
         print("✓ Packet array field access works (size mismatch fixed)")
     except Exception as e:
         print(f"✗ Failed packet array access: {e}")
-        return False
+        assert False, f"Failed packet array access: {e}"
 
     # Test 4: String field access
     try:
@@ -69,7 +69,7 @@ def test_struct_size_compatibility():
         print("✓ String field access works")
     except Exception as e:
         print(f"✗ Failed string field access: {e}")
-        return False
+        assert False, f"Failed string field access: {e}"
 
     # Test 5: Struct size calculation
     try:
@@ -77,7 +77,7 @@ def test_struct_size_compatibility():
         print(f"✓ Smpt_device struct size: {struct_size} bytes")
     except Exception as e:
         print(f"✗ Failed to calculate struct size: {e}")
-        return False
+        assert False, f"Failed to calculate struct size: {e}"
 
     # Test 6: Multiple allocations
     try:
@@ -92,16 +92,24 @@ def test_struct_size_compatibility():
         print("✓ Multiple device allocations work independently")
     except Exception as e:
         print(f"✗ Failed multiple allocations test: {e}")
-        return False
+        assert False, f"Failed multiple allocations test: {e}"
 
     print("\n=== All Struct Compatibility Tests Passed! ===")
     print(
         "The flexible struct fix (using '...;') successfully resolved the size "
         "mismatch issue."
     )
-    return True
+
+
+def standalone_test():
+    """Standalone version that returns boolean for script execution."""
+    try:
+        test_struct_size_compatibility()
+        return True
+    except AssertionError:
+        return False
 
 
 if __name__ == "__main__":
-    success = test_struct_size_compatibility()
+    success = standalone_test()
     sys.exit(0 if success else 1)

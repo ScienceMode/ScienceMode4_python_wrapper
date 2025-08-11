@@ -29,27 +29,27 @@ def test_sciencemode_has_ffi_and_lib():
         print(f"Enhanced CFFI utilities available: {sciencemode._have_cffi_utils}")
         if sciencemode._have_cffi_utils:
             # Test some key enhanced utilities
-            assert hasattr(
-                sciencemode, "managed_new"
-            ), "managed_new function is available"
-            assert hasattr(
-                sciencemode, "managed_buffer"
-            ), "managed_buffer function is available"
-            assert hasattr(
-                sciencemode, "CFFIResourceManager"
-            ), "CFFIResourceManager class is available"
+            assert hasattr(sciencemode, "managed_new"), (
+                "managed_new function is available"
+            )
+            assert hasattr(sciencemode, "managed_buffer"), (
+                "managed_buffer function is available"
+            )
+            assert hasattr(sciencemode, "CFFIResourceManager"), (
+                "CFFIResourceManager class is available"
+            )
 
             # Test string conversion utilities
             assert hasattr(sciencemode, "to_bytes"), "to_bytes function is available"
-            assert hasattr(
-                sciencemode, "from_cstring"
-            ), "from_cstring function is available"
-            assert hasattr(
-                sciencemode, "to_c_array"
-            ), "to_c_array function is available"
-            assert hasattr(
-                sciencemode, "from_c_array"
-            ), "from_c_array function is available"
+            assert hasattr(sciencemode, "from_cstring"), (
+                "from_cstring function is available"
+            )
+            assert hasattr(sciencemode, "to_c_array"), (
+                "to_c_array function is available"
+            )
+            assert hasattr(sciencemode, "from_c_array"), (
+                "from_c_array function is available"
+            )
 
 
 @pytest.mark.parametrize(
@@ -141,13 +141,13 @@ def test_cffi_context_manager():
 
     # Test the context manager with a device struct
     with sciencemode.CFFIResourceManager(sciencemode.ffi.new("Smpt_device*")) as device:
-        assert (
-            device is not None
-        ), "Device struct created successfully with context manager"
+        assert device is not None, (
+            "Device struct created successfully with context manager"
+        )
         # Test that the device has the expected fields
-        assert hasattr(
-            device, "serial_port_name"
-        ), "Device struct in context manager has serial_port_name field"
+        assert hasattr(device, "serial_port_name"), (
+            "Device struct in context manager has serial_port_name field"
+        )
         print("Successfully used context manager for device struct")
 
 
@@ -168,9 +168,9 @@ def test_string_conversion():
         # Test to_bytes with bytes
         bytes_input = b"already bytes"
         bytes_output = sciencemode.to_bytes(bytes_input)
-        assert (
-            bytes_output is bytes_input or bytes_output == bytes_input
-        ), "to_bytes preserves bytes input"
+        assert bytes_output is bytes_input or bytes_output == bytes_input, (
+            "to_bytes preserves bytes input"
+        )
 
     if hasattr(sciencemode, "from_cstring"):
         # Test from_cstring with NULL
@@ -208,6 +208,11 @@ def test_smpt_device_struct_size_compatibility():
     The fix uses flexible struct syntax (...;) to handle platform differences.
     """
     from sciencemode import sciencemode
+    from unittest.mock import MagicMock
+
+    # Skip test if sciencemode is mocked (happens on Windows CI)
+    if isinstance(sciencemode.ffi, MagicMock):
+        pytest.skip("Skipping CFFI struct test - sciencemode module is mocked")
 
     print("Testing Smpt_device struct size compatibility...")
 
@@ -227,9 +232,9 @@ def test_smpt_device_struct_size_compatibility():
 
         # Verify the values were set
         assert device.packet_length == 0, "packet_length field accessible"
-        assert (
-            device.current_packet_number == 1
-        ), "current_packet_number field accessible"
+        assert device.current_packet_number == 1, (
+            "current_packet_number field accessible"
+        )
         print("✓ Core struct fields are accessible")
     except Exception as e:
         pytest.fail(f"Failed to access Smpt_device fields: {e}")
@@ -273,6 +278,11 @@ def test_smpt_device_flexible_struct_behavior():
     """Test that the flexible struct (...;) behaves correctly with different
     operations."""
     from sciencemode import sciencemode
+    from unittest.mock import MagicMock
+
+    # Skip test if sciencemode is mocked (happens on Windows CI)
+    if isinstance(sciencemode.ffi, MagicMock):
+        pytest.skip("Skipping CFFI struct test - sciencemode module is mocked")
 
     print("Testing flexible struct behavior...")
 
@@ -286,9 +296,9 @@ def test_smpt_device_flexible_struct_behavior():
 
         # Verify all devices are independent
         for i, device in enumerate(devices):
-            assert (
-                device.current_packet_number == i
-            ), f"Device {i} has correct packet number"
+            assert device.current_packet_number == i, (
+                f"Device {i} has correct packet number"
+            )
 
         print("✓ Multiple device allocations work independently")
     except Exception as e:
