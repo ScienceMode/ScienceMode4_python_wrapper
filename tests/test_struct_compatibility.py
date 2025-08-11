@@ -23,12 +23,20 @@ def test_struct_size_compatibility():
     print("=== Testing Smpt_device Struct Size Compatibility ===")
 
     try:
+        from unittest.mock import MagicMock
+
         from sciencemode import sciencemode
 
         print("✓ Successfully imported sciencemode")
     except Exception as e:
         print(f"✗ Failed to import sciencemode: {e}")
-        assert False, f"Failed to import sciencemode: {e}"
+        raise AssertionError(f"Failed to import sciencemode: {e}") from e
+
+    # Skip test if sciencemode is mocked (happens on Windows CI)
+    if isinstance(sciencemode.ffi, MagicMock):
+        import pytest
+
+        pytest.skip("Skipping CFFI struct test - sciencemode module is mocked")
 
     # Test 1: Basic struct allocation
     try:
@@ -36,7 +44,7 @@ def test_struct_size_compatibility():
         print("✓ Basic Smpt_device* allocation succeeded")
     except Exception as e:
         print(f"✗ Failed to allocate Smpt_device*: {e}")
-        assert False, f"Failed to allocate Smpt_device*: {e}"
+        raise AssertionError(f"Failed to allocate Smpt_device*: {e}") from e
 
     # Test 2: Field access
     try:
@@ -47,7 +55,7 @@ def test_struct_size_compatibility():
         print("✓ Basic field access works")
     except Exception as e:
         print(f"✗ Failed basic field access: {e}")
-        assert False, f"Failed basic field access: {e}"
+        raise AssertionError(f"Failed basic field access: {e}") from e
 
     # Test 3: Array field access (the problematic 'packet' field)
     try:
@@ -58,7 +66,7 @@ def test_struct_size_compatibility():
         print("✓ Packet array field access works (size mismatch fixed)")
     except Exception as e:
         print(f"✗ Failed packet array access: {e}")
-        assert False, f"Failed packet array access: {e}"
+        raise AssertionError(f"Failed packet array access: {e}") from e
 
     # Test 4: String field access
     try:
@@ -69,7 +77,7 @@ def test_struct_size_compatibility():
         print("✓ String field access works")
     except Exception as e:
         print(f"✗ Failed string field access: {e}")
-        assert False, f"Failed string field access: {e}"
+        raise AssertionError(f"Failed string field access: {e}") from e
 
     # Test 5: Struct size calculation
     try:
@@ -77,7 +85,7 @@ def test_struct_size_compatibility():
         print(f"✓ Smpt_device struct size: {struct_size} bytes")
     except Exception as e:
         print(f"✗ Failed to calculate struct size: {e}")
-        assert False, f"Failed to calculate struct size: {e}"
+        raise AssertionError(f"Failed to calculate struct size: {e}") from e
 
     # Test 6: Multiple allocations
     try:
@@ -92,7 +100,7 @@ def test_struct_size_compatibility():
         print("✓ Multiple device allocations work independently")
     except Exception as e:
         print(f"✗ Failed multiple allocations test: {e}")
-        assert False, f"Failed multiple allocations test: {e}"
+        raise AssertionError(f"Failed multiple allocations test: {e}") from e
 
     print("\n=== All Struct Compatibility Tests Passed! ===")
     print(
