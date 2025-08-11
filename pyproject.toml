@@ -44,7 +44,7 @@ include-package-data = true
 [tool.setuptools.package-data]
 sciencemode = [
     "*.dll",
-    "*.so", 
+    "*.so",
     "*.so.*",
     "*.dylib",
     "*.a",
@@ -54,7 +54,7 @@ sciencemode = [
 
 [tool.cibuildwheel]
 # Skip Python 3.6, 3.7 since we require Python >=3.8
-# Skip 32-bit builds as they're rarely needed for scientific libraries  
+# Skip 32-bit builds as they're rarely needed for scientific libraries
 # Skip PyPy by default (can be enabled if needed)
 skip = ["cp36-*", "cp37-*", "cp38-*", "cp14t-*", "cp14-*", "*-win32", "*-manylinux_i686", "*-musllinux_i686", "pp*"]
 
@@ -71,7 +71,6 @@ test-requires = ["pytest"]
 # Skip testing on emulated architectures for faster builds
 test-skip = "*-*linux_{aarch64,ppc64le,s390x,armv7l,riscv64}"
 
-[tool.cibuildwheel.macos] 
+[tool.cibuildwheel.macos]
 # Skip ARM64 testing on Intel Macs since they can't run natively
 test-skip = "*-macosx_arm64 *-macosx_universal2:arm64"
-

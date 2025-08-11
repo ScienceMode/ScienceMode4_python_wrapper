@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import os
 import sys
 
@@ -9,11 +7,12 @@ if sys.platform.startswith("win"):
     os.environ["PYTHONIOENCODING"] = "utf-8"
     os.environ["PYTHONUTF8"] = "1"
 
+import itertools
 import platform
 import re
-import itertools
-from cffi import FFI
+
 import pycparser
+from cffi import FFI
 from pycparser import c_ast
 from pycparser.c_generator import CGenerator
 
@@ -53,7 +52,7 @@ DEFINE_BLACKLIST = {
     "main",
 }
 
-# Define GCC specific compiler extensions away - simplified from original + minimal bool support
+# Define GCC specific compiler extensions away - simplified + minimal bool
 DEFINE_ARGS = [
     "-D__attribute__(x)=",
     "-D__inline=",
@@ -167,14 +166,14 @@ class Collector(c_ast.NodeVisitor):
     def process_typedecl(self, node):
         coord = os.path.abspath(node.coord.file)
         if node.coord is None or coord.find(include_dir) != -1:
-            typedecl = "{};".format(self.generator.visit(node))
+            typedecl = f"{self.generator.visit(node)};"
             typedecl = ARRAY_SIZEOF_PATTERN.sub("[...]", typedecl)
             if typedecl not in self.typedecls:
                 self.typedecls.append(typedecl)
 
     def sanitize_enum(self, enum):
-        for name, enumeratorlist in enum.children():
-            for name, enumerator in enumeratorlist.children():
+        for _name, enumeratorlist in enum.children():
+            for _name, enumerator in enumeratorlist.children():
                 enumerator.value = c_ast.Constant("dummy", "...")
         return enum
 
@@ -208,7 +207,7 @@ class Collector(c_ast.NodeVisitor):
                 function_name = node.type.declname
             if function_name in FUNCTION_BLACKLIST:
                 return
-            decl = "{};".format(self.generator.visit(node))
+            decl = f"{self.generator.visit(node)};"
             decl = VARIADIC_ARG_PATTERN.sub("...", decl)
             if decl not in self.functions:
                 self.functions.append(decl)
@@ -218,7 +217,7 @@ ffi = FFI()
 
 ffi.set_source(
     "sciencemode._sciencemode",
-    ("\n").join('#include "%s"' % header for header in ROOT_HEADERS),
+    ("\n").join(f'#include "{header}"' for header in ROOT_HEADERS),
     include_dirs=[
         include_dir,
         smpt_include_path1,
@@ -230,32 +229,113 @@ ffi.set_source(
     library_dirs=["./lib"],
 )
 
-pycparser_args = {"use_cpp": True, "cpp_args": DEFINE_ARGS}
 
-# Platform-specific CPP path setup (simplified from original)
-if sys.platform.startswith("win"):  # windows
-    mingw_path = os.getenv("MINGW_PATH", default="D:\\Qt\\Tools\\mingw530_32")
-    pycparser_args["cpp_path"] = "{}\\bin\\cpp.exe".format(mingw_path)
+def find_cpp_executable():
+    """Find available C preprocessor executable, prioritizing MSVC on Windows."""
+    import glob
+    import shutil
+
+    if sys.platform.startswith("win"):
+        # First try to find cl.exe from Visual Studio installations
+        vs_paths = [
+            "C:/Program Files/Microsoft Visual Studio/*/Enterprise/VC/Tools/"
+            "MSVC/*/bin/Hostx64/x64/cl.exe",
+            "C:/Program Files/Microsoft Visual Studio/*/Professional/VC/Tools/"
+            "MSVC/*/bin/Hostx64/x64/cl.exe",
+            "C:/Program Files/Microsoft Visual Studio/*/Community/VC/Tools/"
+            "MSVC/*/bin/Hostx64/x64/cl.exe",
+            "C:/Program Files (x86)/Microsoft Visual Studio/*/Enterprise/"
+            "VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe",
+            "C:/Program Files (x86)/Microsoft Visual Studio/*/Professional/"
+            "VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe",
+            "C:/Program Files (x86)/Microsoft Visual Studio/*/Community/"
+            "VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe",
+        ]
+
+        for pattern in vs_paths:
+            matches = glob.glob(pattern)
+            if matches:
+                # Use the first (usually latest) version found
+                cl_path = matches[0]
+                print(f"Found MSVC compiler: {cl_path}")
+                return cl_path, "cl"
+
+        # Fallback to other compilers
+        candidates = [
+            ("cl.exe", "cl"),
+            ("cpp.exe", "cpp"),
+            ("gcc.exe", "gcc"),
+            ("clang.exe", "clang"),
+        ]
+    else:
+        candidates = [("cpp", "cpp"), ("gcc", "gcc"), ("clang", "clang")]
+
+    for candidate, compiler_type in candidates:
+        cpp_path = shutil.which(candidate)
+        if cpp_path:
+            print(f"Found C preprocessor: {cpp_path}")
+            return cpp_path, compiler_type
+
+    return None, None
+
+
+# Try to find C preprocessor
+cpp_path, compiler_type = find_cpp_executable()
+
+if not cpp_path:
+    raise RuntimeError(
+        "No C preprocessor found. Please install Visual Studio, GCC, or Clang."
+    )
+
+if compiler_type == "cl":
+    # MSVC cl.exe needs special arguments for preprocessing
+    msvc_args = []
+    for arg in DEFINE_ARGS:
+        if arg.startswith("-D"):
+            msvc_args.append("/D" + arg[2:])
+        elif arg.startswith("-I"):
+            msvc_args.append("/I" + arg[2:])
+        elif not arg.startswith("-L") and not arg.startswith("-U"):
+            # Skip linker and undefine args for preprocessing
+            continue
+
+    pycparser_args = {
+        "use_cpp": True,
+        "cpp_path": cpp_path,
+        "cpp_args": ["/EP"] + msvc_args,  # /EP = preprocess only
+    }
+    print("Using MSVC cl.exe for preprocessing")
+else:
+    # Standard GCC/Clang-style preprocessor
+    pycparser_args = {
+        "use_cpp": True,
+        "cpp_args": DEFINE_ARGS,
+        "cpp_path": cpp_path,
+    }
+    print(f"Using {compiler_type} for preprocessing")
 
 print("Starting CFFI parsing with simplified approach...")
 
 collector = Collector()
 for header in ROOT_HEADERS:
     print(f"Parsing {header}...")
+    header_path = os.sep.join([include_dir, header])
+
     try:
-        ast = pycparser.parse_file(os.sep.join([include_dir, header]), **pycparser_args)
+        ast = pycparser.parse_file(header_path, **pycparser_args)
         collector.visit(ast)
         print(f"Successfully parsed {header}")
+
     except Exception as e:
         print(f"Failed to parse {header}: {e}")
-        # Don't continue with broken parsing - this should work
-        raise
+        raise RuntimeError(
+            f"Header parsing failed for {header}. "
+            "Cannot proceed without C preprocessor."
+        ) from e
 
 defines = set()
 for header_path in HEADERS:
-    with open(
-        os.sep.join([include_dir, header_path]), "r", encoding="utf-8"
-    ) as header_file:
+    with open(os.sep.join([include_dir, header_path]), encoding="utf-8") as header_file:
         header = header_file.read()
         for match in DEFINE_PATTERN.finditer(header):
             if (
@@ -266,14 +346,13 @@ for header_path in HEADERS:
                 continue
             try:
                 int(match.group(2), 0)
-                defines.add("#define {} {}".format(match.group(1), match.group(2)))
-            except:
-                defines.add("#define {} ...".format(match.group(1)))
+                defines.add(f"#define {match.group(1)} {match.group(2)}")
+            except ValueError:
+                defines.add(f"#define {match.group(1)} ...")
 
 print(
-    "Processing {} defines, {} types, {} functions".format(
-        len(defines), len(collector.typedecls), len(collector.functions)
-    )
+    f"Processing {len(defines)} defines, {len(collector.typedecls)} types, "
+    f"{len(collector.functions)} functions"
 )
 
 cdef = "\n".join(itertools.chain(*[defines, collector.typedecls, collector.functions]))
