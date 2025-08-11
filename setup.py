@@ -380,8 +380,8 @@ if "build_lib" in sys.argv:
         },
     )
 else:
-    # Full setup for normal installation using static CFFI definitions
-    # Note: cffi_modules is removed since we now use static definitions
+    # Full setup for normal installation with CFFI compilation
+    # This will create platform-specific wheels with compiled extensions
     setup(
         name="sciencemode-cffi",
         packages=["sciencemode"],
@@ -397,7 +397,9 @@ else:
             "Development Status :: 3 - Alpha",
             "Programming Language :: Python :: 3",
         ],
-        # Only cffi is required at runtime now (no pycparser needed)
+        # CFFI compilation - this creates platform-specific wheels
+        cffi_modules=["sciencemode/_cffi.py:ffi"],
+        setup_requires=["cffi>=1.0.0"],
         install_requires=["cffi>=1.0.0"],
         cmdclass={
             "build_lib": BuildLibraryCommand,

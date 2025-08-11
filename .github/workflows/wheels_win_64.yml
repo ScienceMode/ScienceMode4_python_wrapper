@@ -23,14 +23,18 @@ jobs:
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel
 
+      # Build the C library first
       - name: Build lib 
         run: python setup.py build_lib 
 
+      # This will now create platform-specific wheels with compiled CFFI extensions
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
           # Override pyproject.toml settings if needed
           CIBW_BUILD_VERBOSITY: 1
+          # Ensure CFFI can find the static library during compilation
+          CIBW_ENVIRONMENT: "SMPT_LIB_DIR=./lib SMPT_INCLUDE_DIR=./smpt/ScienceMode_Library/include"
 
       - uses: actions/upload-artifact@v4
         with:
