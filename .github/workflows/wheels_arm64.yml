@@ -31,7 +31,10 @@ jobs:
         run: python -m pip install cibuildwheel
       - name: Build lib 
         run: python setup.py build_lib 
- 
+      - name: Build cdef 
+        run: python generate_cffi_definitions.py
+
+
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:

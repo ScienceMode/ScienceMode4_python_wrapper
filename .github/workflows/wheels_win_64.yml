@@ -26,6 +26,9 @@ jobs:
       # Build the C library first
       - name: Build lib 
         run: python setup.py build_lib 
+      - name: Build cdef 
+        run: python generate_cffi_definitions.py
+
 
       # This will now create platform-specific wheels with compiled CFFI extensions
       - name: Build wheels
