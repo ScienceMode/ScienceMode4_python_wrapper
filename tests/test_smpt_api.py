@@ -106,18 +106,18 @@ def test_packet_number_generator(sm):
                 packet_number = sm.smpt_packet_number_generator_next(device)
 
                 # Verify the packet number was changed
-                assert packet_number == prev_value, (
-                    f"Should return previous value ({prev_value})"
-                )
-                assert device.current_packet_number != prev_value, (
-                    "Should update the packet number"
-                )
+                assert (
+                    packet_number == prev_value
+                ), f"Should return previous value ({prev_value})"
+                assert (
+                    device.current_packet_number != prev_value
+                ), "Should update the packet number"
             except AttributeError:
                 # Field not accessible with simplified struct, just test function crash
                 packet_number = sm.smpt_packet_number_generator_next(device)
-                assert isinstance(packet_number, int), (
-                    "Function should return an integer"
-                )
+                assert isinstance(
+                    packet_number, int
+                ), "Function should return an integer"
     else:
         # Fall back to original implementation without resource management
         device = sm.ffi.new("Smpt_device*")
@@ -138,12 +138,12 @@ def test_packet_number_generator(sm):
             packet_number = sm.smpt_packet_number_generator_next(device)
 
             # Verify the packet number was changed
-            assert packet_number == prev_value, (
-                f"Should return previous value ({prev_value})"
-            )
-            assert device.current_packet_number != prev_value, (
-                "Should update the packet number"
-            )
+            assert (
+                packet_number == prev_value
+            ), f"Should return previous value ({prev_value})"
+            assert (
+                device.current_packet_number != prev_value
+            ), "Should update the packet number"
         except AttributeError:
             # Field not accessible with simplified struct, just test function crash
             packet_number = sm.smpt_packet_number_generator_next(device)
