@@ -628,14 +628,18 @@ def fix_windows_type_compatibility(cdef_content):
             # Target simple field declarations in structs
             (r"(\s+)uint8_t\s+(\w+);", r"\1char \2;"),
             (r"(\s+)int8_t\s+(\w+);", r"\1char \2;"),
+            # Target uint16_t fields in structs for Windows compatibility (not function parameters)
+            (r"^(\s+)uint16_t\s+(\w+);", r"\1unsigned int \2;"),
         ]
 
         for pattern, replacement in replacements:
-            cdef_content = re.sub(pattern, replacement, cdef_content)
+            cdef_content = re.sub(
+                pattern, replacement, cdef_content, flags=re.MULTILINE
+            )
 
         print(
-            "Converted specific uint8_t and int8_t fields to "
-            "char for Windows CFFI compatibility"
+            "Converted specific uint8_t, int8_t, and uint16_t fields to "
+            "char and unsigned int for Windows CFFI compatibility"
         )
     else:
         print("Non-Windows platform - keeping original types")
